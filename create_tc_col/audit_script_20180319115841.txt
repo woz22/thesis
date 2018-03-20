@@ -1,0 +1,224 @@
+library( "DBI")
+library( "RMySQL")
+library( "GDD")
+dbd <- dbDriver( "MySQL")
+con <- dbConnect( dbd, user=XXXXXXXX, password=XXXXXXXX, dbname="sagestep", host="dc2-mysql-02.kattare.com")
+
+base <- dbGetQuery( con, "(select subplot.id as subplot_id, rcode, scode, pcode, ptype, subplot.number as sp_number, subplot.treatment from subplot, (select plot.id as plot_id, rcode, scode, plot.code as pcode, plot.type as ptype from plot, (select site.id as site_id, rcode, site.code as scode from site, (select region.id as region_id, region.code as rcode from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region_id) as r where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=r.region_id order by site_id) as s where (( plot.type='CP' )) and plot.site_id=s.site_id order by plot_id) as p where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=p.plot_id order by subplot_id) ")
+subplot <- list()
+set <- list()
+attr <- list()
+out <- data.frame()
+
+vf_v182 <- dbGetQuery( con, " (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSDF' )) and subplot_sample.subplot_id=subplots.id) order by subplot_id, year, speriod ")
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 13.86 * sum( intercepts_10_cnt)), round( 110.28 * sum( intercepts_100_cnt)) from veg_st_intercepts where subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v183 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v183) > 0 ){
+
+names( vf_v183)[2] <- 'dwd_fuel_10h'
+names( vf_v183)[3] <- 'dwd_fuel_100h'
+
+} else {
+
+vf_v183 <- data.frame( dwd_fuel_10h=NA, dwd_fuel_100h=NA)
+}
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 21.22 * sum( intercept_1000_cm * intercept_1000_cm/6.4516)) from veg_lt_intercept where decay_class_dec='S' and subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v184 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v184) > 0 ){
+
+names( vf_v184)[2] <- 'dwd_fuel_1000h_s'
+
+} else {
+
+vf_v184 <- data.frame( dwd_fuel_1000h_s=NA)
+}
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 15.913 * sum( intercept_1000_cm * intercept_1000_cm/6.4516)) from veg_lt_intercept where decay_class_dec='R' and subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v185 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v185) > 0 ){
+
+names( vf_v185)[2] <- 'dwd_fuel_1000h_r'
+
+} else {
+
+vf_v185 <- data.frame( dwd_fuel_1000h_r=NA)
+}
+
+vf_v182 <- merge( vf_v182, vf_v183, all=TRUE)
+vf_v182 <- merge( vf_v182, vf_v184, all=TRUE)
+vf_v182 <- merge( vf_v182, vf_v185, all=TRUE)
+replace_NA_w_0 <- function( row){
+value <- row[1]
+if( is.na( value) ) value <- 0
+return( value)
+}
+
+vf_v182['dwd_fuel_1000h_r'] <- apply( vf_v182['dwd_fuel_1000h_r'], 1, replace_NA_w_0)
+vf_v182['dwd_fuel_1000h_s'] <- apply( vf_v182['dwd_fuel_1000h_s'], 1, replace_NA_w_0)
+if( nrow( vf_v182) > 0 ){
+vf_v182 <- vf_v182[,!(colnames( vf_v182) %in% c( "subplot_sample_id"))]
+}
+subplot <- c( subplot, list( vf_v182))
+rm( vf_v182)
+
+
+vf_v186 <- dbGetQuery( con, "(select subplot_sample.subplot_id, subplot_sample.year, subplot_sample.sample_period as speriod from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' )) and (subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC') and subplot_sample.subplot_id=subplots.id group by subplot_id, year, speriod order by subplot_id, year, speriod) ")
+
+vf_v187 <- vf_v186
+calc_crn_cvr <- function( row){
+dxd <- as.numeric( row[4])
+if( is.na( dxd) ){ dxd <- 0 }
+return( round( (pi/4) * dxd / 990, 1))}
+tree_cover_ttl <- rep( 0, nrow( vf_v186))
+vf_v186 <- cbind( vf_v186, tree_cover_ttl)
+vf_v188 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='CELE3' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='CELE3' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v189 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v189) == 0 ){
+
+vf_v189 <- c( 0)
+}
+
+vf_v188 <- merge( vf_v188, vf_v189, all=TRUE)
+vf_v188 <- apply( vf_v188, 1, calc_crn_cvr)
+vf_v188 <- data.frame( vf_v188)
+names( vf_v188)[1] <- "tree_cvr_CELE3"
+vf_v186 <- cbind( vf_v186, vf_v188)
+vf_v190 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='JUOC' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='JUOC' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v191 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v191) == 0 ){
+
+vf_v191 <- c( 0)
+}
+
+vf_v190 <- merge( vf_v190, vf_v191, all=TRUE)
+vf_v190 <- apply( vf_v190, 1, calc_crn_cvr)
+vf_v190 <- data.frame( vf_v190)
+names( vf_v190)[1] <- "tree_cvr_JUOC"
+vf_v186 <- cbind( vf_v186, vf_v190)
+vf_v192 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='JUOS' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='JUOS' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v193 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v193) == 0 ){
+
+vf_v193 <- c( 0)
+}
+
+vf_v192 <- merge( vf_v192, vf_v193, all=TRUE)
+vf_v192 <- apply( vf_v192, 1, calc_crn_cvr)
+vf_v192 <- data.frame( vf_v192)
+names( vf_v192)[1] <- "tree_cvr_JUOS"
+vf_v186 <- cbind( vf_v186, vf_v192)
+vf_v194 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='PIED' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='PIED' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v195 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v195) == 0 ){
+
+vf_v195 <- c( 0)
+}
+
+vf_v194 <- merge( vf_v194, vf_v195, all=TRUE)
+vf_v194 <- apply( vf_v194, 1, calc_crn_cvr)
+vf_v194 <- data.frame( vf_v194)
+names( vf_v194)[1] <- "tree_cvr_PIED"
+vf_v186 <- cbind( vf_v186, vf_v194)
+vf_v196 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='PIMO' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='PIMO' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v197 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v197) == 0 ){
+
+vf_v197 <- c( 0)
+}
+
+vf_v196 <- merge( vf_v196, vf_v197, all=TRUE)
+vf_v196 <- apply( vf_v196, 1, calc_crn_cvr)
+vf_v196 <- data.frame( vf_v196)
+names( vf_v196)[1] <- "tree_cvr_PIMO"
+vf_v186 <- cbind( vf_v186, vf_v196)
+vf_v198 <- vf_v187
+res <- dbSendQuery( con, "(select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_stature inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_stature.dead_yn='N' or veg_tree_stature.dead_yn is null ) and ( veg_tree_stature.species_txn='PIPO' )) and veg_tree_stature.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) union (select subplot_id, year, speriod, sum( crown_dia_longest_dm * crown_dia_perp_dm) as dxd from veg_tree_canopy inner join (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='SR' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' or subplot_sample.year='07' or subplot_sample.year='08' or subplot_sample.year='09' or subplot_sample.year='10' or subplot_sample.year='12' or subplot_sample.year='13' or subplot_sample.year='16' or subplot_sample.year='17' ) and ( subplot_sample.sample_type_id='VSTH' or subplot_sample.sample_type_id='VSTC' )) and subplot_sample.subplot_id=subplots.id) as sids on (( veg_tree_canopy.species_txn='PIPO' )) and veg_tree_canopy.subplot_sample_id=sids.subplot_sample_id group by subplot_id, year, speriod) ")
+vf_v199 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v199) == 0 ){
+
+vf_v199 <- c( 0)
+}
+
+vf_v198 <- merge( vf_v198, vf_v199, all=TRUE)
+vf_v198 <- apply( vf_v198, 1, calc_crn_cvr)
+vf_v198 <- data.frame( vf_v198)
+names( vf_v198)[1] <- "tree_cvr_PIPO"
+vf_v186 <- cbind( vf_v186, vf_v198)
+vf_v186[4] <- vf_v186[4] + vf_v186[5]
+vf_v186[4] <- vf_v186[4] + vf_v186[6]
+vf_v186[4] <- vf_v186[4] + vf_v186[7]
+vf_v186[4] <- vf_v186[4] + vf_v186[8]
+vf_v186[4] <- vf_v186[4] + vf_v186[9]
+vf_v186[4] <- vf_v186[4] + vf_v186[10]
+subplot <- c( subplot, list( vf_v186))
+rm( vf_v186)
+
+
+if( length( set) > 0 ){
+  for( df in set ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( set)
+}
+if( length( subplot) > 0 ){
+  for( df in subplot ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( subplot)
+}
+if( nrow( out) > 0 ){
+      out <- merge( out, base, all.x=TRUE, all.y=FALSE)
+}
+rm( base)
+
+if( length( attr) > 0 ){
+  for( df in attr ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( attr)
+}
+if( exists( "only") ){
+      out <- only
+}
+
+
+
+write.csv( out, "/home3/s/sagestep/public_html/temp/data20180319115828.csv", row.names=FALSE,  na="NA")
+q()
