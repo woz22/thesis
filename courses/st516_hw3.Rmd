@@ -1,0 +1,441 @@
+---
+title: "ST516 Homework 3"
+author: "Sam Wozniak"
+date: "March 23, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+library(Sleuth3)
+library(ggplot2)
+library(trtools)
+library(COUNT)
+library(npregfast)
+library(DAAG)
+library(tidyr)
+options(digits = 4)
+```
+#Aflatoxicol and Liver Tumors in Trout
+
+####1. Estimate a logistic regression model using dose as the explanatory variable. Report parameter estimes, standard errors, and CI's. Write a brief summary that summarizes the effect of aflatoxiol using an odds ratio. Plot the model. Plot studentized residuals against predicted values. Comment on if you think the model is a good fit for the data
+
+Summary: For a 0.1 ppm increase in Dose, the odds of a trout getting liver tumors increases by a factor of 4.19.
+
+Comment: The model is not a good fit for the data. A majority of the studentized residuals are more extreme than 2 or -2.
+
+```{r, message = FALSE}
+#logistic regression model
+m <- glm(cbind(Tumor, Total - Tumor) ~ Dose, family = binomial, data = ex2116)
+cbind(summary(m)$coefficients, confint(m))
+
+#odds ratio
+contrast(m, a = list(Dose = .2), b = list(Dose = .1), tf = exp)
+
+#plot model
+d <- expand.grid(Dose = seq(0, .3, length = 100))
+d$yhat <- predict(m, newdata = d, type = "response")
+
+p <- ggplot(ex2116, aes(x = Dose, y = Tumor/Total))
+p <- p + geom_point() + theme_classic() + ylim(0,1)
+p <- p + geom_line(aes(y = yhat), data = d)
+p <- p + labs(x = "Dose (ppm)", y = "Proportion of Trout With Liver Tumors")
+plot(p)
+
+#plot studentized residuals vs predicted 
+plot(predict(m), rstudent(m))
+abline(-2, 0, lty = 2)
+abline(2, 0, lty = 2)
+```
+
+####2. Repeat the previous problem except using the base-2 log of dose as the explanatory variable. Be sure your interpretation of the odds ratio accounts for the log transformation of dose.
+
+Summary: For a doubling of dose, the odds of a trout getting liver tumors increases by a factor of 2.46.
+
+Comment: This model is a better fit than the previous model, but still has a fair number of studentized residuals fall outside of (-2,2). 
+```{r, message = FALSE}
+#logistic regression model with log2 transformation of dose
+m <- glm(cbind(Tumor, Total - Tumor) ~ log2(Dose), family = binomial, data = ex2116)
+cbind(summary(m)$coefficients, confint(m))
+
+#odds ratio
+contrast(m, a = list(Dose = .2), b = list(Dose = .1), tf = exp)
+
+#plot model
+d <- expand.grid(Dose = seq(0, .3, length = 100))
+d$yhat <- predict(m, newdata = d, type = "response")
+
+p <- ggplot(ex2116, aes(x = Dose, y = Tumor/Total))
+p <- p + geom_point() + theme_classic() + ylim(0,1)
+p <- p + geom_line(aes(y = yhat), data = d)
+p <- p + labs(x = "Dose (ppm)", y = "Proportion of Trout With Liver Tumors")
+plot(p)
+
+#plot studentized residuals vs predicted 
+plot(predict(m), rstudent(m))
+abline(-2, 0, lty = 2)
+abline(2, 0, lty = 2)
+```
+
+####3. Repeat the previous two problems, but specify dose as a factor.
+
+Summary:  
+
+For an increase in Dose from 0.01 to 0.025 ppm, the odds of a trout getting liver tumors increases by a factor of 7.95.
+
+For an increase in Dose from 0.01 to 0.05 ppm, the odds of a trout getting liver tumors increases by a factor of 22.29.
+
+For an increase in Dose from 0.01 to 0.1 ppm, the odds of a trout getting liver tumors increases by a factor of 48.91.
+
+For an increase in Dose from 0.01 to 0.25 ppm, the odds of a trout getting liver tumors increases by a factor of 70.84.
+
+Comment: The studentized residuals for this model look much better than either of the previous two models--there are few studentized residuals that fall outside (-2,2), and those that do, are not very from from -2 or 2.
+
+```{r, message = FALSE}
+#logistic regression model
+m <- glm(cbind(Tumor, Total - Tumor) ~ factor(Dose), family = binomial, data = ex2116)
+cbind(summary(m)$coefficients, confint(m))
+
+#odds ratio
+contrast(m, a = list(Dose = c('0.025', '0.05', '0.1', '0.25')), 
+         b = list(Dose = '0.01'), 
+         cnames = c("0.025 vs 0.01", "0.05 vs 0.01", "0.1 vs 0.01", "0.25 vs 0.01"), tf = exp)
+
+#plot studentized residuals vs predicted 
+plot(predict(m), rstudent(m))
+abline(-2, 0, lty = 2)
+abline(2, 0, lty = 2)
+```
+
+#Effects of Commercial Fishing on Abundance
+
+####1. Estimate a Poisson regression model where expected number of fish depends on trawl depth and period. Include an interaction. Account for the response vairable being a rate (# of fish per unit area) and that trawls vary in terms of their area. Report parameter estimates, se's, and CI's for model parameters.
+
+```{r, message = FALSE}
+data(fishing)
+m <- glm(totabund ~ offset(log(sweptarea)) + meandepth * period, 
+         family = poisson, data = fishing)
+cbind(summary(m)$coefficients, confint(m))
+```
+
+####2. Plot.
+```{r, message = FALSE}
+d <- expand.grid(period = levels(fishing$period), 
+                 meandepth = seq(500, 5000, length = 1000), sweptarea = 1)
+d$yhat <- predict(m, newdata = d, type = "response")
+
+p <- ggplot(fishing, aes(x = meandepth, y = totabund/sweptarea))
+p <- p + geom_point(alpha = 0.5) + facet_wrap(~period) + theme_bw()
+p <- p + geom_line(aes(y = yhat, group = period), data = d)
+p <- p + labs(x = "Mean Travel Depth (meters)",
+              y = "Fish Caught Per Square Meter Trawled")
+plot(p)
+```
+
+####3. Write out regression model implied by results of summary
+E(Yi) = exp(b~0~* + b~1~d~i~ + b~2~p~i~ + b~3~d~i~p~i~)
+
+where
+
+b~0~* = log(S) + b~0~ = log(sweptarea) + b~0~  
+
+d~i~ = meandepth
+
+p~i~ = 
+
+   * 1 if period = 2000-2002
+   
+   * 0 if period = 1977-1989
+
+
+Casewise:
+
+E(Y~i~) = exp(b~0~ + b~1~d~i~), for the period 1977-1989
+
+E(Y~i~) = exp(b~0~ + b~2~ + (b~1~ + b~3~) * d~i~), for the period 2000-2002 
+
+####4. Using contrast briefly explain (a) how the estimated fish per area changes with mean depth for each period, and (b) how the estimated fish per area changed between the two periods at mean depths of 1000, 2000, 3000, 4000, 5000 meters.
+
+Interpretation:
+
+a) In the period 1977-1989, for a 1000 m increase in mean depth, the estimated fish per area changes by a factor of 0.37.
+
+In the period 2000-2002, for a 1000 m increase in mean depth, the estimated fish per area changes by a factor of 0.43.
+
+b) From the period 1977-1989 to the period 2000-2002, the estimated fish per area changes by a factor of 0.52 at a depth of 1000 m.
+
+From the period 1977-1989 to the period 2000-2002, the estimated fish per area changes by a factor of 0.60 at a depth of 2000 m.
+
+From the period 1977-1989 to the period 2000-2002, the estimated fish per area changes by a factor of 0.69 at a depth of 3000 m.
+
+From the period 1977-1989 to the period 2000-2002, the estimated fish per area changes by a factor of 0.78 at a depth of 4000 m.
+
+From the period 1977-1989 to the period 2000-2002, the estimated fish per area changes by a factor of 0.89 at a depth of 5000 m.
+
+
+```{r, message = FALSE}
+#a)
+contrast(m, a = list(period = "1977-1989", meandepth = 2000, sweptarea = 1),
+         b = list(period = "1977-1989", meandepth = 1000, sweptarea = 1),
+         cname = "1977-1989", tf = exp)
+
+contrast(m, a = list(period = "2000-2002", meandepth = 2000, sweptarea = 1),
+         b = list(period = "2000-2002", meandepth = 1000, sweptarea = 1), 
+         cname = "2000-2002", tf = exp)
+
+#b)
+contrast(m, a = list(period = "2000-2002", meandepth = c(1000, 2000, 3000, 4000, 5000), sweptarea = 1),
+         b = list(period = "1977-1989", meandepth = c(1000, 2000, 3000, 4000, 5000), sweptarea = 1),
+         cname = c('1000 m', '2000 m', '3000 m', '4000 m', '5000 m'), tf = exp)
+```
+
+
+#Efficacy of Two Topical Cream Preparations
+
+####1. Estimate a logistic regression model, which includes clinic but the odds ratio for the effect of treatment should not vary between clinics. Treat clinic as a factor. 
+
+```{r, message = FALSE}
+#treat clinic as factor
+topical$clinic <- as.factor(topical$clinic)
+
+#logistic regression
+m <- glm(cbind(favorable, unfavorable) ~ clinic + treatment, family = binomial, data = topical)
+cbind(summary(m)$coefficients, confint(m))
+```
+
+####2. Estimate the odds ratio for the effect of treatment two ways: 1) by using the appropriate output from either summary or coef, and 2) by using contrast. Summarize the effect of the treatment using an odds ratio.
+
+Summary: The odds of successful treatment of infection under the 'Drug' treatment is 2.17 times that of the 'Control' treatment.
+
+```{r, message = FALSE}
+exp(cbind(coef(m), confint(m)))
+contrast(m, 
+         a = list(treatment = "Drug", clinic = levels(topical$clinic)), 
+         b = list(treatment = "Control", clinic = levels(topical$clinic)),
+                  cnames = paste("clinic", c(levels(topical$clinic))), tf = exp)
+```
+
+####3. Produce point estimates and CI's from the model for the probability of a favorable application of the topical cream preparation for each clinic using contrast or glmint.
+
+
+```{r, message = FALSE}
+#favorable application with 'DRUG' version of topical cream
+contrast(m, 
+         a = list(clinic = levels(topical$clinic), treatment = 'Drug'),
+         cnames = paste("clinic", c(levels(topical$clinic))), tf = plogis)
+
+#favorable application with 'CONTROL' version of topical cream
+contrast(m, 
+         a = list(clinic = levels(topical$clinic), treatment = 'Drug'),
+         cnames = paste("clinic", c(levels(topical$clinic))), tf = plogis)
+```
+
+#An Allometric Model for Barnacles Revisited
+
+####1. Estimate the model three ways: as a gamma GLM with the distribution/family specified as a gamma distribution, using a quasi-likelihood approach to specify the variance structure (using either quais or tweedie for the family argument), and by using iteratively weight least squares with nonlinear regression--similar to the last homework. Use the base-2 logarithm of rostro-carinal length rather than natural log. Report the parameter estimates, se's, and CI's. 
+
+```{r, message = FALSE}
+#subset barnacle data to remove values of 0 and an outlier
+barnacle.subset <- barnacle[-c(2, 991, 1451),]
+head(barnacle.subset)
+
+#gamma generalized linear model
+m <- glm(DW ~ F * log2(RC), family = Gamma(link = log), data = barnacle.subset)
+cbind(summary(m)$coefficients, confint(m))
+
+#quasi-likelihood model
+m <- glm(DW ~  F * log2(RC), family = quasi(link = log, variance = "mu^2"), data = barnacle.subset)
+cbind(summary(m)$coefficients, confint(m))
+
+#iteratively weight least squares model
+m2 <- nls(DW ~ exp(t0 + t1 * (F == "lens") + 
+  (t2 + t3 * (F == "lens")) * log2(RC)), data = barnacle.subset, 
+  start = c(t0 = -8.07, t1 = 0.14, t2 = 1.97, t3 = 0.05))
+
+for (i in 1:10) {
+  barnacle.subset$w <- 1/predict(m2)^2
+  m2 <- nls(DW ~ exp(t0 + t1 * (F == "lens") + (t2 + t3 * (F == "lens")) * log2(RC)), 
+           data = barnacle.subset, start = coef(m2), weights = w)
+}
+
+cbind(summary(m2)$coefficients, confint(m2))
+```
+
+####2. Write out the regression model implied by the results of summary from glm in its mathematical form to show how the E(Yi) is related to the explanatory variables. Be sure to define each explanatory variable to show that you know how it is computed based on the raw data. Also write the model case-wise for each location.
+
+E(Y~i~) = exp(B~0~ + B~1~X~i1~ + B~2~X~i2~ + B~3~X~i3~)
+
+
+x~i1~ = 1 if 'F' is 'lens', and 0 if 'F' is 'barca'
+      
+x~i2~ = log~2~(RC)
+
+x~i3~ = x~i1~ * x~i2~
+
+Casewise:
+
+if 'F' == 'barca': E(Y~i~) = exp(B~0~ + B~2~*log~2~(RC))
+
+if 'F' == 'lens' : E(Y~i~) = exp(B~0~ + B~1~ + (B~2~ + B~3~) * log~2~(RC))
+
+
+####3. Use contrast to estimate the multiplicative effect of rostro-carinal length for each location. Use base-2 log in model. Summarize the effect. 
+
+Summary: For each doubling of RC length, the dry weight of barnacles: at Punta de Barca increases by a factor of 7.18 and at Punta de Lens by a factor of 7.58.
+
+```{r, message = FALSE}
+contrast(m, 
+         a = list(RC = 20, F = c('barca', 'lens')), 
+         b = list(RC = 10, F = c('barca', 'lens')), 
+         cnames = c('barca', 'lens'), tf = exp)
+```
+
+####4. Produce a studentized residual plot to check to see if the specified variance structure was appropriate. Comment on whether you believe the variance structure was modeled correctly and why.
+
+Comment: The variance structure was not modeled correctly because the studentized residuals show decreasing variance.
+
+```{r, message = FALSE}
+plot(predict(m), rstudent(m))
+```
+
+####5. Conduct a significance test to determine if the difference between the multiplicative effect in the different locations is statistically significant. 
+
+#############HOW?
+```{r, message = FALSE}
+m <- glm(DW ~ F * log2(RC), family = Gamma(link = log), data = barnacle.subset)
+m.null <- glm(DW ~ F + log2(RC), family = Gamma(link = log), data = barnacle.subset)
+anova(m.null, m, test = "LRT")
+```
+
+#Moth Habitat Study
+
+####1. Estimate the model and report output from summary. Try obtaining profile likelihood ratio CI's (you will get an error but still report). Obtain Wald CI's for the model parameters using coeftest or lincon. Change the habitat reference level to "Disturbed" using relevel. Report output from summary, try obtaining both types of CI's again. Estimate a model without an interaction and report the results from summary and try to obtain both types of CI's. Discuss what you observed when comparing results from all three models/parameterizations. What did you notice that was unusual?
+
+Discussion: When the reference level for habitat was changed to "Disturbed", the parameter estimates for the "Bank" level were much greater than the other habitat levels, and the standard errors for the "Bank" level were many orders of magnitude greater than the other habitat levels. Something is going wrong with the model in relation to the Bank habitat level. When the interaction between habitat and moth type is removed from the model, there is nothing odd about the 'Bank' level parameter estimates and standard errors.
+```{r, message = FALSE}
+#put data into long form
+moths.long <- gather(moths, A, P, key = 'type', value = 'count')
+
+#model rate of count/m with effect of habitat, type, and interaction
+m <- glm(count ~ offset(log(meters)) + type * habitat, 
+         family = poisson, data = moths.long)
+summary(m)$coefficients
+
+#try obtaining profile likelihood ratio CI
+confint(m)
+```
+
+```{r, message = FALSE}
+#Obtain Wald CI for model parameters with coeftest or lincon
+lincon(m)
+
+#change reference level to "Disturbed" using relevel. Report output from summary, try obtaining both types of CI's again.
+moths.long$habitat <- relevel(moths.long$habitat, ref = "Disturbed")
+m <- glm(count ~ offset(log(meters)) + type * habitat, 
+         family = poisson, data = moths.long)
+summary(m)$coefficients
+lincon(m)
+confint(m)
+```
+
+```{r, message = FALSE}
+#Estimate model without an interaction
+m <- glm(count ~ offset(log(meters)) + type + habitat, 
+         family = poisson, data = moths.long)
+summary(m)$coefficients
+lincon(m)
+confint(m)
+```
+
+
+####2. Estimate the model with an interaction, but omitting data from transects from the "Bank" habitat type. Report parameter estimates, se's, and profile likelihood and Wald CI's.
+
+```{r, message = FALSE}
+#omit data from transects from the Bank habitat type
+moths.long.subset <- subset(moths.long, habitat != "Bank")
+
+#estimate model
+m <- glm(count ~ offset(log(meters)) + type * habitat, 
+         family = poisson, data = moths.long.subset)
+summary(m)$coefficients
+lincon(m)
+confint(m)
+```
+
+
+####3. Use contrast or glmint to report point estimates and CI's for the expected number of moths per meter for each of the 14 combinations of habitat and moth type.
+
+```{r, message = FALSE}
+#moth A point estimates
+contrast(m,
+         a = list(type = 'A', 
+                  habitat = c('Disturbed', 'Lowerside', 'NEsoak', 'NWsoak', 'SEsoak', 'SWsoak', 'Upperside'), 
+                  meters = 1), 
+         tf = exp,
+         cnames = paste("Moth A at", c('Disturbed', 'Lowerside', 'NEsoak', 'NWsoak', 'SEsoak', 'SWsoak', 'Upperside')))
+
+#moth b point estimates
+contrast(m,
+         a = list(type = 'P', 
+                  habitat = c('Disturbed', 'Lowerside', 'NEsoak', 'NWsoak', 'SEsoak', 'SWsoak', 'Upperside'), 
+                  meters = 1), 
+         tf = exp,
+         cnames = paste("Moth P at", c('Disturbed', 'Lowerside', 'NEsoak', 'NWsoak', 'SEsoak', 'SWsoak', 'Upperside')))
+```
+
+
+####4. Use contrast to estimate the effect of moth type as a multiplicative effect for the Disturbed, Lowerside, and Upperside habitats. Summarize the effect.
+
+Summary: The expected number of P moths per meter in the Disturbed habitat is 4.1 times greater than the expected number of A moths per meter.
+
+```{r, message = FALSE}
+contrast(m,
+         a = list(type = 'P', 
+                  habitat = c('Disturbed', 'Lowerside', 'Upperside'), 
+                  meters = 1),
+         b = list(type = 'A',
+                  habitat = c('Disturbed', 'Lowerside', 'Upperside'), 
+                  meters = 1),
+         tf = exp,
+         cnames = paste("P vs A at", c('Disturbed', 'Lowerside', 'Upperside')))
+```
+
+
+####5. Check the model for overdispersion. Comment and justify if and why you think overdispersion is or is not present.
+
+Comment: There is overdispersion because variance is increasing; not quite a classic megaphone shape, but similar.
+
+```{r, message = FALSE}
+plot(predict(m), rstudent(m))
+```
+
+####6. Using data from the df moths, estimate a logistic regression model for the proportion of moths in each transect that are of type P, but using only habitat type as your explanatory variables, Be sure to drop data from the "Bank" habitat type. Report parameter estimates, se's, and CI's.
+
+```{r, message = FALSE}
+#remove 'Bank' habitat data
+moths.subset <- subset(moths, habitat != "Bank")
+head(moths.subset)
+
+#logistic regression model
+m <- glm(cbind(P, A) ~ habitat, family = binomial, data = moths.subset)
+cbind(summary(m)$coefficients, confint(m))
+```
+
+
+####7. For the Disturbed, Lowerside, and Upperside habitat types, use contrast to estimate: (a) the odds that a moth found a given habitat is P vs A, and (b) the probability that a moth found in a given habitat will be of type P, noting that the log of the odds produced by contrast can be converted to odds and probabilites by transforiming them with the R functions 'exp' and 'plogis' respectively.
+
+```{r, message = FALSE}
+#a) odds
+contrast(m,
+         a = list(habitat = c('Disturbed', 'Lowerside', 'Upperside')),
+         tf = exp, cnames = paste('P vs. A at', c('Disturbed', 'Lowerside', 'Upperside')))
+
+#b) probability
+contrast(m,
+         a = list(habitat = c('Disturbed', 'Lowerside', 'Upperside')),
+         tf = plogis, cnames = paste('P vs. A at', c('Disturbed', 'Lowerside', 'Upperside')))
+
+```
+
