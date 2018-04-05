@@ -169,8 +169,7 @@ j &lt;- i
 j$fclass &lt;- c(&quot;10h&quot;, &quot;100h&quot;, &quot;1000h sound&quot;, &quot;1000h rotten&quot;)
 colnames(j) &lt;- c(&quot;Fuel Class&quot;, &quot;Min&quot;, &quot;Max&quot;, &quot;Mean&quot;, &quot;Min&quot;, &quot;Max&quot;, &quot;Mean&quot;, &quot;Min&quot;, &quot;Max&quot;, &quot;Mean&quot;,&quot;Min&quot;, &quot;Max&quot;, &quot;Mean&quot;)
 
-
-
+View(i)
 dwd_jp &lt;- kable(j, format = &quot;html&quot;) %&gt;%
   kable_styling(c(&quot;striped&quot;, &quot;bordered&quot;)) %&gt;%
   add_header_above(c(&quot;&quot;, 'Control' = 3, 'Prescribed Fire' = 3, 'Cutting' = 3, 'Mastication' = 3))
@@ -410,6 +409,74 @@ Mean
 </tr>
 </tbody>
 </table>
+<div id="utah-phase-2-dwd" class="section level2">
+<h2>UTAH PHASE 2 DWD</h2>
+<pre class="r"><code>dwd_ph2 &lt;- data_ph2 %&gt;%
+  group_by(treatment) %&gt;%
+  summarise(n(),
+            &quot;min_10h&quot; = round(min(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_10h&quot; = round(max(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_10h&quot; = round(mean(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;min_100h&quot; = round(min(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_100h&quot; = round(max(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_100h&quot; = round(mean(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            &quot;min_1000hS&quot; = round(min(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_1000hS&quot; = round(max(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_1000hS&quot; = round(mean(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            &quot;min_1000hR&quot; = round(min(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_1000hR&quot; = round(max(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_1000hR&quot; = round(mean(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2))
+dwd_ph2</code></pre>
+<pre><code>## # A tibble: 4 x 14
+##   treatment `n()` min_10h max_10h mean_10h min_100h max_100h mean_100h
+##   &lt;fct&gt;     &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 BM           18  0.140    1.57     0.700    0         1.77     0.810
+## 2 CO           18  0.100    0.700    0.310    0.100     1.28     0.560
+## 3 FI           21  0.0700   1.46     0.570    0         5.90     1.12 
+## 4 ME           18  0.140    1.11     0.630    0.690     2.80     1.43 
+## # ... with 6 more variables: min_1000hS &lt;dbl&gt;, max_1000hS &lt;dbl&gt;,
+## #   mean_1000hS &lt;dbl&gt;, min_1000hR &lt;dbl&gt;, max_1000hR &lt;dbl&gt;,
+## #   mean_1000hR &lt;dbl&gt;</code></pre>
+<pre class="r"><code>#remove column 'n()'
+dwd_ph2 &lt;- dwd_ph2[-2]
+
+#reformat table
+d &lt;- gather(dwd_ph2, key = fuel_class, value = &quot;value&quot;, -treatment)
+e &lt;- d %&gt;% separate(col = fuel_class, into = c('stat', 'fclass'), sep = &quot;_&quot;)
+f &lt;- e %&gt;% unite(col = 'stat', treatment, stat)
+g &lt;- f %&gt;%  spread(key = stat, value = value)
+h &lt;- arrange(g, desc(fclass))
+i &lt;- h[c('fclass', 'CO_min', 'CO_max', 'CO_mean', 'FI_min', 'FI_max', 'FI_mean', 'ME_min', 'ME_max', 'ME_mean', 'BM_min', 'BM_max', 'BM_mean')]
+j &lt;- i
+j$fclass &lt;- c(&quot;10h&quot;, &quot;100h&quot;, &quot;1000h sound&quot;, &quot;1000h rotten&quot;)
+View(j)</code></pre>
+</div>
+<div id="quadrat-method-for-masticated-fuels" class="section level2">
+<h2>QUADRAT METHOD FOR MASTICATED FUELS</h2>
+<pre class="r"><code>mast &lt;- read.csv(&quot;C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\mast\\mastication.ed2.csv&quot;, header = TRUE)
+
+mast1 &lt;- subset(mast, subset = mast$sp_phase == 1)
+mast2 &lt;- subset(mast, subset = mast$sp_phase == 2)
+mast3 &lt;- subset(mast, subset = mast$sp_phase == 3)
+
+mast_dwd1 &lt;- mast1 %&gt;%
+  summarise(n(),
+            &quot;min_1h&quot; = round(min(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_1h&quot; = round(max(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_1h&quot; = round(mean(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            &quot;min_10h&quot; = round(min(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_10h&quot; = round(max(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_10h&quot; = round(mean(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            &quot;min_100_1000h&quot; = round(min(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            &quot;max_100_1000h&quot; = round(max(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            &quot;mean_100_1000h&quot; = round(mean(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2))
+mast_dwd1</code></pre>
+<pre><code>##   n() min_1h max_1h mean_1h min_10h max_10h mean_10h min_100_1000h
+## 1  42   0.01   3.31    0.94    0.02    3.02      1.1             0
+##   max_100_1000h mean_100_1000h
+## 1           2.5           0.45</code></pre>
+<pre class="r"><code>View(mast_dwd1)</code></pre>
+</div>
 
 
 

@@ -3,8 +3,8 @@ title: "dwd"
 author: "Sam Wozniak"
 date: "April 2, 2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -57,10 +57,132 @@ j$fclass <- c("10h", "100h", "1000h sound", "1000h rotten")
 colnames(j) <- c("Fuel Class", "Min", "Max", "Mean", "Min", "Max", "Mean", "Min", "Max", "Mean","Min", "Max", "Mean")
 
 View(i)
-dwd_jp <- kable(j, format = "latex") %>%
+dwd_jp <- kable(j, format = "html") %>%
   kable_styling(c("striped", "bordered")) %>%
   add_header_above(c("", 'Control' = 3, 'Prescribed Fire' = 3, 'Cutting' = 3, 'Mastication' = 3))
 dwd_jp
-
-
 ```
+##UTAH PHASE 2 DWD
+
+```{r}
+dwd_ph2 <- data_ph2 %>%
+  group_by(treatment) %>%
+  summarise(n(),
+            "min_10h" = round(min(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "max_10h" = round(max(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "mean_10h" = round(mean(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "min_100h" = round(min(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "max_100h" = round(max(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "mean_100h" = round(mean(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "min_1000hS" = round(min(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "max_1000hS" = round(max(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "mean_1000hS" = round(mean(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "min_1000hR" = round(min(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            "max_1000hR" = round(max(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            "mean_1000hR" = round(mean(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2))
+dwd_ph2
+
+#remove column 'n()'
+dwd_ph2 <- dwd_ph2[-2]
+
+#reformat table
+d <- gather(dwd_ph2, key = fuel_class, value = "value", -treatment)
+e <- d %>% separate(col = fuel_class, into = c('stat', 'fclass'), sep = "_")
+f <- e %>% unite(col = 'stat', treatment, stat)
+g <- f %>%  spread(key = stat, value = value)
+h <- arrange(g, desc(fclass))
+i <- h[c('fclass', 'CO_min', 'CO_max', 'CO_mean', 'FI_min', 'FI_max', 'FI_mean', 'ME_min', 'ME_max', 'ME_mean', 'BM_min', 'BM_max', 'BM_mean')]
+j <- i
+j$fclass <- c("10h", "100h", "1000h sound", "1000h rotten")
+View(j)
+
+#Utah Phase 3
+
+dwd_ph3 <- data_ph3 %>%
+  group_by(treatment) %>%
+  summarise(n(),
+            "min_10h" = round(min(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "max_10h" = round(max(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "mean_10h" = round(mean(dwd_fuel_10h, na.rm = TRUE)*0.00044609, 2),
+            "min_100h" = round(min(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "max_100h" = round(max(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "mean_100h" = round(mean(dwd_fuel_100h, na.rm = TRUE)*0.00044609, 2),
+            "min_1000hS" = round(min(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "max_1000hS" = round(max(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "mean_1000hS" = round(mean(dwd_fuel_1000h_s, na.rm = TRUE)*0.00044609, 2),
+            "min_1000hR" = round(min(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            "max_1000hR" = round(max(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2),
+            "mean_1000hR" = round(mean(dwd_fuel_1000h_r, na.rm = TRUE)*0.00044609, 2))
+dwd_ph3
+
+#remove column 'n()'
+dwd_ph3 <- dwd_ph3[-2]
+
+#reformat table
+d <- gather(dwd_ph3, key = fuel_class, value = "value", -treatment)
+e <- d %>% separate(col = fuel_class, into = c('stat', 'fclass'), sep = "_")
+f <- e %>% unite(col = 'stat', treatment, stat)
+g <- f %>%  spread(key = stat, value = value)
+h <- arrange(g, desc(fclass))
+i <- h[c('fclass', 'CO_min', 'CO_max', 'CO_mean', 'FI_min', 'FI_max', 'FI_mean', 'ME_min', 'ME_max', 'ME_mean', 'BM_min', 'BM_max', 'BM_mean')]
+j <- i
+j$fclass <- c("10h", "100h", "1000h sound", "1000h rotten")
+View(j)
+```
+
+##QUADRAT METHOD FOR MASTICATED FUELS
+```{r}
+
+mast <- read.csv("C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\mast\\mastication.ed2.csv", header = TRUE)
+
+mast1 <- subset(mast, subset = mast$sp_phase == 1)
+mast2 <- subset(mast, subset = mast$sp_phase == 2)
+mast3 <- subset(mast, subset = mast$sp_phase == 3)
+
+
+
+###PHASE 1
+mast_dwd1 <- mast1 %>%
+  summarise(n(),
+            "min_1h" = round(min(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "max_1h" = round(max(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "mean_1h" = round(mean(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "min_10h" = round(min(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "max_10h" = round(max(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "mean_10h" = round(mean(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "min_100_1000h" = round(min(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "max_100_1000h" = round(max(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "mean_100_1000h" = round(mean(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2))
+mast_dwd1
+View(mast_dwd1)
+
+
+#PHASE 2
+mast_dwd2 <- mast2 %>%
+  summarise(n(),
+            "min_1h" = round(min(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "max_1h" = round(max(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "mean_1h" = round(mean(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "min_10h" = round(min(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "max_10h" = round(max(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "mean_10h" = round(mean(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "min_100_1000h" = round(min(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "max_100_1000h" = round(max(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "mean_100_1000h" = round(mean(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2))
+mast_dwd2
+
+#Phase 3
+mast_dwd3 <- mast3 %>%
+  summarise(n(),
+            "min_1h" = round(min(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "max_1h" = round(max(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "mean_1h" = round(mean(kgha_1h, na.rm = TRUE)*0.00044609, 2),
+            "min_10h" = round(min(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "max_10h" = round(max(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "mean_10h" = round(mean(kgha_10h, na.rm = TRUE)*0.00044609, 2),
+            "min_100_1000h" = round(min(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "max_100_1000h" = round(max(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2),
+            "mean_100_1000h" = round(mean(kgha_100h_1000h, na.rm = TRUE)*0.00044609, 2))
+mast_dwd3
+```
+
