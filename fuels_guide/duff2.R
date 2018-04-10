@@ -49,7 +49,6 @@ d <- subset(d, subset = yst == 10| yst == 1| yst == pre_m_year)
 a <- replace(d$yst, d$yst <= 0, 0)
 d$yst <- a
 
-
 #create column with pre-treatment tree cover titled 'pre_tc'
 d$pre_tc <- NA
 for (i in unique(d$subplot_id)) {                                                            #for each unique subplot_id
@@ -91,11 +90,47 @@ p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.
 p <- p + facet_grid(rcode~treatment)
 plot(p)
 
-b[which(b$DUFF1 > 20000 & b$rcode == 'WJ' & b$sp_phase == 2 & b$treatment == "ME"),]
+#b[which(b$DUFF1 > 20000 & b$rcode == 'WJ' & b$sp_phase == 2 & b$treatment == "ME"),]
 
 #WJ-BM-MC013 year 10 duff load = Inf
-
 
 pj_control <- subset(b, subset = (b$rcode == 'PJ' & b$treatment == 'CO'))
 pj_control
 ##############look at pj_control observation 841 --> year 10 duff = 56000
+
+
+
+#############mastication subset
+mastication <- subset(b, subset = b$treatment == 'BM')
+
+mlm <- lm(DUFF1 ~ pre_tc + yst + pre_tc:yst, data = mastication)
+mquasi <- glm(DUFF1 ~ pre_tc + yst + pre_tc:yst, family = quasi(link = "identity", variance = "mu"), data = mastication)
+
+summary(mquasi)
+plot(predict(mquasi), rstudent(mquasi))
+
+d <- expand.grid(yst = seq(0,10, length = 100), pre_tc = c(10, 20, 30))
+d$yhat <- predict(mquasi, newdata = d)
+
+p <- ggplot(mastication, aes(x = yst, y = DUFF1))
+p <- p + geom_point()
+p <- p + geom_line(data = d, aes(x = yst, y = yhat, group = pre_tc))
+p <- p + theme_bw()
+plot(p)
+
+mast_mean <- subset(d1, subset = d1$treatment == 'BM')
+
+p <- ggplot(mast_mean, aes(x = sp_phase, y = mean_duff1, fill = yst))
+p <- p + geom_col(position = "dodge")
+p <- p + scale_fill_manual(values = c('#1c9099', '#67a9cf', '#a6bddb'))
+p <- p + geom_errorbar(data = mast_mean, aes(ymin = mean_duff1 - se_duff1, ymax = mean_duff1 + se_duff1), 
+                       position = position_dodge(width = 0.9), 
+                       width = 0.3)
+p <- p + labs(title = "",
+              x = "Pre-treatment Woodland Phase", 
+              y = "Mean Fuel Loading (kg/ha) ± se", 
+              fill = "Years \nsince \ntreatment")
+p <- p + ylim(0,25000)
+p <- p + theme_classic(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.5, .5))
+plot(p)

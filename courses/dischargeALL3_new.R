@@ -209,4 +209,3 @@ p <- p + labs(colour = "Year", title = 'Difference in Discharge Between Stream G
               x = '', y = expression('Discharge (ft'^{3}*'/sec)'))
 plot(p)
 
-View(diff)
