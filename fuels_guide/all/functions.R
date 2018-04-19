@@ -1,3 +1,6 @@
+library(dplyr)
+library(tidyr)
+
 data <- read.csv('C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\all\\data_20180416145329.csv', header = TRUE)
 
 #data cleaning and subsetting function
@@ -25,16 +28,16 @@ data <- clean_subset(data, region = 'JP', phase = '2', treatment1 = 'CO')
 
 ###create lists of data 
 #need to be columns--data$tree_cvr_JUOS
-cover = list(JUOS = data$tree_cvr_JUOS, 
-             PIED = data$tree_cvr_PIED)
-density = list(ARTRW8 = data$shrub_dns_ARTRW8, 
-               CHVI8 = data$shrub_dns_CHVI8)
-height = list(grass = data$grass_ht_avg, 
-              forb = data$forb_ht_avg)
-loading = list(dwd10h = data$dwd_fuel_10h, 
-               dwd100h = data$dwd_fuel_100h)
-bulkDens = list(ARTRW8 = data$shrub_bd_ARTRW8, 
-                CHVI8 = data$shrub_bd_CHVI8)
+cover = list(cover_tree_JUOS = data$tree_cvr_JUOS, 
+             cover_tree_PIED = data$tree_cvr_PIED)
+density = list(density_shrub_ARTRW8 = data$shrub_dns_ARTRW8, 
+               density_shrub_CHVI8 = data$shrub_dns_CHVI8)
+height = list(height_herb_grass = data$grass_ht_avg, 
+              height_herb_forb = data$forb_ht_avg)
+loading = list(loading_dwd_dwd10h = data$dwd_fuel_10h, 
+               loading_dwd_dwd100h = data$dwd_fuel_100h)
+bulkDens = list(bulkDens_shrub_ARTRW8 = data$shrub_bd_ARTRW8, 
+                bulkDens_shrub_CHVI8 = data$shrub_bd_CHVI8)
 var_list <- list(cover = cover, density = density, 
                  height = height, loading = loading, 
                  bulkDens = bulkDens)
@@ -64,9 +67,9 @@ fuels_please <- function(list){
   table_density <- as.data.frame(sapply(var_list[['density']], stat_density))
   table_height <- as.data.frame(sapply(var_list[['height']], stat_height))
   table_loading <- as.data.frame(sapply(var_list[['loading']], stat_loading))
-  table_bulkDens <- as.data.frame(sapply(var_list[['cover']], stat_bulkDens))
+  table_bulkDens <- as.data.frame(sapply(var_list[['bulkDens']], stat_bulkDens))
   fuel <- cbind(table_cover, table_density, table_height, table_loading, table_bulkDens)
-  fuel$value <- c('min', 'mean', 'max')
+  fuel$stat <- c('min', 'mean', 'max')
   #table_list <- list(cover = table_cover, 
   #                   density = table_density, 
   #                   height = table_height, 
@@ -76,8 +79,15 @@ fuels_please <- function(list){
   #fuels <- lapply(var_list, sapply, stats)
   #return(fuels)
 }
-fuels_please(list = var_list)
+fuel_wide <- fuels_please(list = var_list)
 
+fuel_long <- fuel_wide %>%
+  gather(key = component, value = value, -stat) %>%
+  spread(key = stat, value = value) %>%
+  separate(col = component, into = c("Variable", "Category", "Component"), sep = "\\_")
+
+
+fuel_order <- fuel_long[c('Variable', 'Category', 'Component', 'min', 'mean', 'max')]
 
 fuels_please(data = data, list = var_list, region = 'JP', phase = 2, treatment1 = 'CO')
 
