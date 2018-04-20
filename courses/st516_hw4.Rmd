@@ -1,0 +1,68 @@
+---
+title: "ST516 Homework 4"
+author: "Sam Wozniak"
+date: "April 20, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SMPracticals)
+library(flexsurv)
+library(ggplot2)
+options(digits = 4, scipen = 8)
+```
+
+#Spring Failure Data
+
+####1 
+Multiplicative effect of stress base on the AFT model: For each 100 unit increase in stress, the number of thousands of cycles until failure 
+
+Multiplicative effect of stress on hazard function:
+```{r}
+springs$stress <- as.numeric(as.character(springs$stress))
+springs$stressquant <- as.numeric(as.character(springs$stress))/100
+m <- flexsurvreg(Surv(cycles, cens) ~ stressquant, dist = "weibull", data = springs)
+print(m)
+
+#survival function plots
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), type = "survival", tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Survival Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#plot hazard function
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), type = "hazard", tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Hazard Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#plot probability density
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), fn = function(t, ...) dweibull(t, ...), tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Probability Density Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#estimate the expected number of thousands of cycles for each of these six stress levels
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+summary(m, newdata = d, type = "mean", tidy = TRUE)
+```
+
+####2
+
+```{r}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
