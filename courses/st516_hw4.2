@@ -1,0 +1,199 @@
+---
+title: "ST516 Homework 4"
+author: "Sam Wozniak"
+date: "April 20, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SMPracticals)
+library(flexsurv)
+library(ggplot2)
+library(SurvRegCensCov)
+library(npregfast)
+library(statmod)
+library(VGAM)
+library(trtools)
+library(tidyr)
+options(digits = 4, scipen = 8)
+```
+
+#Spring Failure Data
+
+####1 
+Multiplicative effect of stress based on the AFT model: For each 100 unit increase in stress, the number of thousands of cycles until failure is multiplied by a factor of 3.062.
+
+Multiplicative effect of stress on hazard function:
+```{r}
+springs$stress <- as.numeric(as.character(springs$stress))
+springs$stressquant <- as.numeric(as.character(springs$stress))/100
+m <- flexsurvreg(Surv(cycles, cens) ~ stressquant, dist = "weibullPH", data = springs)
+print(m)
+
+#m <- survreg(formula = Surv(cycles, cens) ~ stressquant, data = springs, dist = 'weibull')
+#summary(m)
+
+
+
+#survival function plots
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), type = "survival", tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Survival Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#plot hazard function
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), type = "hazard", tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Hazard Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#plot probability density
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+d <- summary(m, newdata = d, t = seq(0, 20000, by = 50), fn = function(t, ...) dweibull(t, ...), tidy = TRUE)
+
+p <- ggplot(d, aes(x = time, y = est))
+p <- p + geom_line(aes(col = factor(stressquant)))
+p <- p + labs(x = "Thousands of Cycles", y = "Probability", title = 'Probability Density Functions', col = 'Stress \n((newtons per square mm)/100)')
+p <- p + theme_classic()
+plot(p)
+
+#estimate the expected number of thousands of cycles for each of these six stress levels
+d <- data.frame(stressquant = seq(7, 9.5, by = 0.5))
+summary(m, newdata = d, type = "mean", tidy = TRUE)
+
+
+##estimate hazards ratio with SurvRegCensCov????
+
+hazardRatio = -(-1.880)/0.614
+m <- flexsurvreg(Surv(cycles, cens) ~ stressquant, data = springs, dist = "weibullPH")
+print(m)
+```
+
+####2
+
+```{r}
+
+
+```
+
+
+#Marginal Effects for the Barnacles Model
+
+####1. For each location report the estimated discrete marginal effect of RC length between 10 and 15mm, and 15 and 20mm. Also estimate the discrete marginal effect of location at RC lengths of 10, 15, and 20mm. Interpret the results.
+
+The discrete marginal effect of increasing RC length from 10 to 15 mm is a 0.48 g increase in dry weight at Barca and 0.52 g increase in dry weight at Lens.
+
+The discrete marginal effect of increasing RC length from 15 to 20 mm is a 0.89 g increase in dry weight at Barca and 0.99 g increase in dry weight  at Lens.
+```{r}
+m <- glm(DW ~ log2(RC) * F, data = barnacle, family = tweedie(link.power = 0, var.power = 1.7))
+
+#for each location estimate discrete marginal effect of RC length between 10 and 15, and 15 and 20 mm
+margeff(m, 
+        a = list(RC = 15, F = c('barca', 'lens')),
+        b = list(RC = 10, F = c('barca', 'lens')),
+        cnames = c('barca', 'lens'))
+
+margeff(m, 
+        a = list(RC = 20, F = c('barca', 'lens')),
+        b = list(RC = 15, F = c('barca', 'lens')),
+        cnames = c('barca', 'lens'))
+
+```
+
+
+####2. For each location, report the instantaneous marginal effect of RC length at lengths of 10, 15, and 20 mm. Interpret the results.
+
+At a RC length length of 10 mm, the expected change in dry weight is 0.00006 g per mm increase in RC length.
+At a RC length length of 15 mm, the expected change in dry weight is 0.0001 g per mm increase in RC length.
+At a RC length length of 20, the expected change in dry weight is 0.0002 g per mm increase in RC length.
+```{r}
+margeff(m, 
+        a = list(RC = c(10, 15, 20) + 0.001, F = 'barca'),
+        b = list(RC = c(10, 15, 20), F = 'barca'),
+        cnames = c('@10', '@15', '@20'))
+```
+
+####3. For each location, report the estimated percent change in expected RC length between 10 and 15 mm, and 15 and 20 mm. Also estimate the percent change between the locations at RC lengths of 10, 15, and 20 mm. Interpret the results.
+
+The estimated percent change in dry weight for an increase in RC length from 10 to 15 mm is 219% at Barca, and 231% at Lens.
+
+The estimated percent change in dry weight for an increase in RC length from 15 to 20 mm is 128% at Barca, and 134% at Lens.
+
+The estimated percent increase in dry weight from Barca to Lens is 2.3% at an RC length of 10mm, 6.0% at an RC length of 15mm, and 8.7% at an RC length of 20mm. 
+```{r}
+margeff(m, 
+        a = list(RC = 15, F = c('barca', 'lens')),
+        b = list(RC = 10, F = c('barca', 'lens')),
+        type = 'percent',
+        cnames = c('barca', 'lens'))
+
+margeff(m, 
+        a = list(RC = 20, F = c('barca', 'lens')),
+        b = list(RC = 15, F = c('barca', 'lens')),
+        type = 'percent',
+        cnames = c('barca', 'lens'))
+
+margeff(m, 
+        a = list(RC = c(10, 15, 20), F = c('lens')),
+        b = list(RC = c(10, 15, 20), F = c('barca')),
+        type = 'percent',
+        cnames = c('10', '15', '20'))
+
+```
+
+
+#White Sturgeon Sexual Maturity
+
+####1. Estimate the sequential regression model using family = cratio. Do not specify paralle = TRUE. Report the parameter estimates returned by vglm. Plot the estimated probability for each category of sexual maturity as a function of size and se. The format of the plot can be similar to that we used for the impairment data in lecture but with size on the x-axis and one panel for each sex. Interpret the odds ratios for the effects of size and sex (apply the exponential function to the parameter estimates).
+
+For each 10 cm increase in midpoint size, the odds of being at least mature increases by a factor of 1.04.
+For each 10 cm increase in midpoint size, the odds of being at least mature increases by a factor of 1.01.
+Compared to a female sturgeon, the odds of a male sturgeon being at least mature is greater by a factor of .
+Compared to a female sturgeon, the odds of a male sturgeon being at ripe is greater by a factor of .
+```{r}
+#convert proportions into frequencies
+mysturgeon <- sturgeon
+mysturgeon$immature <- with(sturgeon, round(immature * count))
+mysturgeon$mature <- with(sturgeon, round(mature * count))
+mysturgeon$ripe <- with(sturgeon, round(ripe * count))
+
+m <- vglm(cbind(immature, mature, ripe) ~ midpoint + sex, family = cratio, data = mysturgeon)
+cbind(coef(m), confint(m))
+
+#plot
+d <- expand.grid(sex = c("M","F"), midpoint = seq(80, 130, by = 10))
+d <- cbind(d, predict(m, newdata = d, type = "response"))
+d <- gather(d, key = "maturity", value = "probability", immature, mature, ripe)
+
+p <- ggplot(d, aes(x = midpoint, y = probability, color = maturity))
+p <- p + geom_line() + ylim(0,1) + theme_bw() + facet_wrap(~sex)
+p <- p + labs(x = 'Size Midpoint (cm)', y = 'Probability', color = 'Maturity')
+plot(p)
+
+#odds ratios
+round(exp(cbind(coef(m), confint(m))), 2)
+```
+
+
+####2. Repeat the previous problem except use a proportional odds model with family = propodds.
+
+```{r}
+
+```
+
+
+####3. Repeat the previous problem except use a multinomial logit model. Be sure to set the baseline category to the first (immature) category using the option refLevel = 'immature'.
+
+```{r}
+
+```
+

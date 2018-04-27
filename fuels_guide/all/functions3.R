@@ -9,6 +9,11 @@ d$cover_herb_forb <- with(d, fol_cover_pt_pforb + fol_cover_pt_aforb)
 d$density_tree_JUOS <- with(d, tree_dns_5_50_JUOS + tree_dns_gt50_JUOS)
 d$density_tree_PIED <- with(d, tree_dns_5_50_PIED + tree_dns_gt50_PIED)
 
+#calculate herb bulk density
+d$avg_grass_ht_meters <- d$avg_grass_ht/100
+d$herb_load_ttl <- (d$herb_fuel_live_wd + d$herb_fuel_dead_wd) * 0.0001   #total herb load converted into kg/m^2 from kg/ha
+d$bulkDns_herb <- with(d, herb_load_ttl/avg_grass_ht_meters)     #only takes into account grasses, not forbs!
+
 #select columns of data that you need and standardize naming convention
 data <- select(d, c(subplot_id, scode, rcode, treatment, sp_phase, year,  
                     cover_tree_JUOS = tree_cvr_JUOS, 
@@ -44,7 +49,8 @@ data <- select(d, c(subplot_id, scode, rcode, treatment, sp_phase, year,
                     loading_ltrDuff_trLitterDuff = tree_ltr_duff_ld,
                     bulkDns_shrub_ARTRW8 = shrub_bd_ARTRW8,
                     bulkDns_shrub_CHVI8 = shrub_bd_CHVI8,
-                    bulkDns_shrub_PUST = shrub_bd_PUST))
+                    bulkDns_shrub_PUST = shrub_bd_PUST,
+                    bulkDns_herb_total = bulkDns_herb))
 
 
 #data cleaning and subsetting function
@@ -69,11 +75,12 @@ clean_subset <- function(data, region, phase, treatment1, scode, y_imp){
                  treatment1 == as.factor(treatment))
   data <- select(data, -c(subplot_id, scode, rcode, treatment, sp_phase, year, y_imp, yst))
 }
-scode <- c('GR', 'ON', 'SC')                         
-y_imp <- c(7, 6, 7)
+
+
+scode <- c('GR', 'ON', 'SC') #specify site codes
+y_imp <- c(7, 6, 7)          #specify year of implementation for sites      
 data <- clean_subset(data, region = 'JP', phase = '2', treatment1 = 'CO', scode = scode, y_imp = y_imp)
 
-head(data, n = 18)
 ###################################################################################
 stats <- function(data){
   stats <- function(x){c(round(min(x, na.rm = TRUE), 6),
@@ -97,18 +104,24 @@ stats <- function(data){
                                levels = c('tree', 'shrub', 'herb', 'dwd', 'ltrDuff', 'bground'))
   fuel_order <- arrange(fuel_order, Variable, Category)
   
-  #convert units in table
-  d <- fuel_order
-  conversion <- 
-    outer(d$Variable == 'cover', 1) + 
-    outer(d$Variable == 'density', 0.404686) +
-    outer(d$Variable == 'height', 0.393701) +
-    outer(d$Variable == 'loading', 0.000446090) +
-    outer(d$Variable == 'bulkDns', 0.0624280)
-  d[,c('min', 'mean', 'max')] <- d[,c('min', 'mean', 'max')] * conversion
   
+  #make column of conversion factors
+  d <- fuel_order 
+  d$conversion <- 'NA'
+  d$conversion[d$Variable == 'cover'] <- 1
+  d$conversion[d$Variable == 'density'] <- 0.404686      #from #/ha to #/acre
+  d$conversion[d$Variable == 'height'] <- 0.393701       #from cm to in
+  d$conversion[d$Variable == 'loading'] <- 0.000446090   #from kg/ha to tons/acre
+  d$conversion[d$Variable == 'bulkDns'] <- 0.0624280     #from kg/m^3 to lbs/ft^3
+  
+  d$conversion <- as.numeric(d$conversion)               #coerce data type of conversion from character to numeric
+  d[,c('min', 'mean', 'max')] <- d[,c('min', 'mean', 'max')] * d$conversion      #convert to correct units
+  d <- select(d, -conversion)                            #remove conversion column
+ 
   #make columns min mean and max of type numeric
   d[,c('min','mean','max')] <- lapply(d[,c('min','mean','max')], as.numeric)
+  
+  #round columns
   d[,c('min','mean','max')] <- round(d[,c('min','mean','max')], 4)
   return(d)
 }
@@ -117,7 +130,7 @@ d <- stats(data)
 
 #final order/arrangement
 d$Component <- factor(d$Component, levels = c('JUOS', 'PIED', 'ARTRW8', 'CHVI8', 'PUST', 'pgrass', 'agrass', 'grass', 'forb', 'iLitter', 'bground',
-                                              'live', 'dead', '10h', '100h', '1000hS', '1000hR', 'trLitterDuff'))
+                                              'live', 'dead', '10h', '100h', '1000hS', '1000hR', 'trLitterDuff', 'total'))
 d <- arrange(d, Variable, Category, Component)
 
 write.xlsx(d, file = 'C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\all\\fuels_guide_table_tidy.xlsx', 
