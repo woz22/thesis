@@ -2,7 +2,7 @@ library(dplyr)
 library(tidyr)
 library(xlsx)
 
-d <- read.csv('C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\data_20180416145329.csv', header = TRUE)
+d <- read.csv('C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\new_data\\data_20180508162831.csv', header = TRUE)
 
 #######################################################alter for each region/phase/treatment
 
@@ -12,7 +12,7 @@ d$density_tree_JUOS <- with(d, tree_dns_5_50_JUOS + tree_dns_gt50_JUOS)
 d$density_tree_PIED <- with(d, tree_dns_5_50_PIED + tree_dns_gt50_PIED)
 
 #calculate herb bulk density
-d$avg_grass_ht_meters <- d$avg_grass_ht/100
+d$avg_grass_ht_meters <- d$avg_grass_height/100
 d$herb_load_ttl <- (d$herb_fuel_live_wd + d$herb_fuel_dead_wd) * 0.0001   #total herb load converted into kg/m^2 from kg/ha
 d$bulkDns_herb <- with(d, herb_load_ttl/avg_grass_ht_meters)     #only takes into account grasses, not forbs!
 
@@ -26,7 +26,7 @@ data <- select(d, c(subplot_id, scode, rcode, treatment, sp_phase, year,
                     cover_herb_agrass = fol_cover_pt_agrass, 
                     cover_herb_forb, 
                     cover_ltrDuff_iLitter = litter_cover, 
-                    cover_bground_bground = bare_gnd_cover,
+                    cover_bground_bground = fc_bare_gnd_fol_cvr,
                     density_tree_JUOS, 
                     density_tree_PIED,
                     density_shrub_ARTRW8 = shrub_dns_ARTRW8, 
@@ -69,10 +69,8 @@ clean_subset <- function(data, region, phase, treatment1, scode, y_imp){
   
   
   #change shrub heights of 0 to NA so that they get removed when calculating quantiles, means#############################CHANGE PER REGION
-  data$height_shrub_ARNO4[data$height_shrub_ARNO4 == 0] <- NA
   data$height_shrub_ARTRW8[data$height_shrub_ARTRW8 == 0] <- NA
   data$height_shrub_CHVI8[data$height_shrub_CHVI8 == 0] <- NA
-  data$height_shrub_PUTR2[data$height_shrub_PUTR2 == 0] <- NA
   
   data <- filter(data,                                 #subset data based on variables passed to clean_subset function
                  rcode == region, 
@@ -81,13 +79,8 @@ clean_subset <- function(data, region, phase, treatment1, scode, y_imp){
   data <- select(data, -c(subplot_id, scode, rcode, treatment, sp_phase, year, y_imp, yst))
 }
 
-###########################################################################################################alter for each region/phase/treatment
-scode <- c('GR', 'ON', 'SC') #specify site codes
-y_imp <- c(7, 6, 7)          #specify year of implementation for sites      
-data <- clean_subset(data, region = 'JP', phase = '1', treatment1 = 'CO', scode = scode, y_imp = y_imp)
 
-################################################################################################################################
-
+#stats output function
 stats <- function(data){
   stats <- function(x){c(quantile(x, probs = 0.1, na.rm = TRUE),
                          mean(x, na.rm = TRUE),
@@ -129,6 +122,13 @@ stats <- function(data){
   #d[,c('10th','mean','90th')] <- round(d[,c('10th','mean','90th')], 4)
   return(d)
 }
+
+###########################################################################################################alter for each region/phase/treatment
+scode <- c('GR', 'ON', 'SC') #specify site codes
+y_imp <- c(7, 6, 7)          #specify year of implementation for sites      
+data <- clean_subset(data, region = 'JP', phase = '3', treatment1 = 'FI', scode = scode, y_imp = y_imp)
+
+################################################################################################################################
 
 d <- stats(data)
 

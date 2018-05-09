@@ -1,0 +1,123 @@
+---
+title: "ST516 HW 5"
+author: "Sam Wozniak"
+date: "May 7, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(trtools)
+library(Sleuth3)
+library(hcc)
+library(lme4)
+library(geepack)
+```
+
+#Estimation of the Crossing Point of Regression Curves
+
+####1.Solve algebraically for dc so that you can write it as a function of the Bj parameters. Use the delta method to estimate dc, the standard error for this estimator, and a 95% CI for dc.
+
+Solve algebraically for dc:
+B0 + B1dc = B0 + B2 + (B1 + B3) * dc
+B0 + B1dc = B0 + B2 + B1dc + B3dc
+0 = B2 + B3dc
+-B2/B3 = dc
+
+```{r}
+m <- glm(cbind(Removed, Placed - Removed) ~ Distance + Morph + Distance:Morph, 
+         data = case2102,
+         family = binomial)
+summary(m)$coefficients
+dmethod(m, pfunc = "-b2/b3", pname = c("b2", "b3"))
+```
+
+#Quadratic Regression and the Quadratic Formula
+
+####1. Use the delta method to estimate Xl and Xu, their standard errors, and a 95% CI for each value.
+
+```{r}
+data(tensile)
+a <- lm(Y ~ I(x^2) + x, data = tensile)
+summary(a)
+m <- nls(Y ~ a * (x)^2 + b * x + c, 
+         data = tensile, 
+         start = c(a = -0.63, b = 11.76, c = -6.67))
+
+dmethod(m, pfunc = "(-b - sqrt(b^2 - 4 * a * (c-30))) /(2 * a)", pname = c('a', 'b', 'c'))
+
+dmethod(m, pfunc = "(-b + sqrt(b^2 - 4 * a * (c-30))) /(2 * a)", pname = c('a', 'b', 'c'))
+```
+
+#Fiber and Cholesterol
+
+####1. Use lmer to estimate the linear mixed-effects model. Report the parameter estimates and their standard errors using summary(). Use contrast() or reparameterize the model by changing the reference level of 'treatment'using relevel() to estimate the difference in expected serum cholesterol between the baseline and low fiber conditions, between the baseline and high fiber conditions, and between the low and high fiber conditions.
+
+```{r}
+d <- case1602
+d$subject <- factor(1:nrow(d))
+d <- tidyr::gather(d, key ='treatment', value = 'cholesterol', 
+                   Baseline, HiFiber, LoFiber)
+d <- dplyr::arrange(d, subject)
+d$treatment <- factor(d$treatment, levels = c('Baseline', 'LoFiber', 'HiFiber'))
+
+m <- lmer(cholesterol ~ treatment + (1|subject), data = d)
+summary(m)
+
+contrast(m, 
+         a = list(treatment = c('Baseline', 'Baseline', 'LoFiber')),
+         b = list(treatment = c('LoFiber', 'HiFiber', 'HiFiber')),
+         cnames = c('B - L', 'B - H', 'L - H'))
+```
+
+####2. Repeat the previous problem, but use a fixed-effects model with the lm function.
+
+```{r}
+m <- lm(cholesterol ~ treatment + subject, data = d)
+summary(m)
+
+contrast(m, 
+         a = list(treatment = c('Baseline', 'Baseline', 'LoFiber'), subject = '1'),
+         b = list(treatment = c('LoFiber', 'HiFiber', 'HiFiber'), subject = '1'))
+```
+
+####3. Repeat the previous problem, but use geeglm() to estimate a marginal model that ignores any subject-specific effects, but attempts to correct for the lack of independence of observations from the same subject as well as any heteroscedasticity due to such effects. For your working correlation structure use corstr = 'unstructured'. Note that contrast() has not been adapted to work with geeglm objects, so you will need to reparameterize with relevel() to obtain the desired contrasts. 
+
+```{r}
+m <- geeglm(cholesterol ~ treatment, data = d, corstr = "unstructured", id = subject)
+summary(m)
+
+d$treatment <- relevel(d$treatment, ref = "LoFiber")
+summary(m)
+```
+
+
+#Aflatoxicol and Liver Tumors in Trout
+
+####1. Use glmer to estimate a generalized linear mixed model for the effect of dose on the expected proportion of trout with tumors. Similar to how you did on a previous hw, model the effect of dose as a factor. However, this time you are including the 'main effect' of tank as an additional random effect (note that you will need to add a variable to the data frame that identifies each tank). Report the parameter estimates and standard errors using summary().
+
+```{r}
+
+```
+
+####2. Repeat the previous proble, but use a marginal model approach, estimating the parameters using generalized estimating equations using geeglm().
+
+```{r}
+
+```
+
+####3. Compare the results of the previous two analyses to what you obtained in the previous hw where you used a generalized linear model ignoring any 'tank effect' beyond dose. Consider specificially the parameter estimates and standard errors. Are they relatively similar or quite different? Discuss briefly why you think this happened.
+
+```{r}
+
+```
+
+#Orthodontic Measurements on Children Over Time
+
+####1. Estimate a linear mixed-effects model using lmer that assumes that the expected distance is a linear function of age, but that both the slope and intercept of this linear function varies between male and female children, and also varies between subjects. The effects of the subject should be modeled as random effects. Hint: this model is very similar to that used for the Sitka data. Report your parameter estimates and standard errors. Use contrast() to estimate: A) the slope of the line for an average male and female child, and B) the difference in the expected distance between the average male and female child at ages of 8, 10, 12, 14 years.
+
+```{r}
+
+```
+

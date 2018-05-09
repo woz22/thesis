@@ -1,0 +1,127 @@
+library( "DBI")
+library( "RMySQL")
+library( "GDD")
+dbd <- dbDriver( "MySQL")
+con <- dbConnect( dbd, user=XXXXXXXX, password=XXXXXXXX, dbname="sagestep", host="dc2-mysql-02.kattare.com")
+
+base <- dbGetQuery( con, "(select subplot.id as subplot_id, rcode, scode, pcode, ptype, subplot.number as sp_number, subplot.treatment from subplot, (select plot.id as plot_id, rcode, scode, plot.code as pcode, plot.type as ptype from plot, (select site.id as site_id, rcode, site.code as scode from site, (select region.id as region_id, region.code as rcode from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region_id) as r where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=r.region_id order by site_id) as s where (( plot.type='CP' )) and plot.site_id=s.site_id order by plot_id) as p where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=p.plot_id order by subplot_id) ")
+subplot <- list()
+set <- list()
+attr <- list()
+out <- data.frame()
+
+vf_v506 <- dbGetQuery( con, "select subplot.id as subplot_id, subplot.slope_pct as sp_slope, subplot.aspect_azi as sp_aspect from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id")
+
+attr <- c( attr, list( vf_v506))
+rm( vf_v506)
+
+
+vf_v507 <- dbGetQuery( con, "select subplot.id as subplot_id, plots.elevation_m as p_elevation from subplot, (select plot.id, plot.elevation_m from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot_id")
+
+attr <- c( attr, list( vf_v507))
+rm( vf_v507)
+
+
+vf_v508 <- dbGetQuery( con, " (select subplot_sample.subplot_id, year, sample_period as speriod, subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' ) and ( subplot_sample.sample_type_id='VSDF' )) and subplot_sample.subplot_id=subplots.id) order by subplot_id, year, speriod ")
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 13.86 * sum( intercepts_10_cnt)), round( 110.28 * sum( intercepts_100_cnt)) from veg_st_intercepts where subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v509 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v509) > 0 ){
+
+names( vf_v509)[2] <- 'dwd_fuel_10h'
+names( vf_v509)[3] <- 'dwd_fuel_100h'
+
+} else {
+
+vf_v509 <- data.frame( dwd_fuel_10h=NA, dwd_fuel_100h=NA)
+}
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 21.22 * sum( intercept_1000_cm * intercept_1000_cm/6.4516)) from veg_lt_intercept where decay_class_dec='S' and subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v510 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v510) > 0 ){
+
+names( vf_v510)[2] <- 'dwd_fuel_1000h_s'
+
+} else {
+
+vf_v510 <- data.frame( dwd_fuel_1000h_s=NA)
+}
+
+res <- dbSendQuery( con, "select subplot_sample_id, round( 15.913 * sum( intercept_1000_cm * intercept_1000_cm/6.4516)) from veg_lt_intercept where decay_class_dec='R' and subplot_sample_id in (select subplot_sample.id as subplot_sample_id from subplot_sample, (select subplot.id from subplot, (select plot.id from plot, (select site.id from site, (select region.id from region where (( region.code='PJ' or region.code='JP' or region.code='WJ' ))  order by region.id) as regions  where (( site.code='WB' or site.code='ON' or site.code='BC' or site.code='MC' or site.code='SC' or site.code='DR' or site.code='SV' or site.code='GR' or site.code='BM' )) and site.region_id=regions.id order by site.id) as sites  where (( plot.type='CP' )) and plot.site_id=sites.id order by plot.id) as plots  where (( subplot.treatment='CO' or subplot.treatment='FI' or subplot.treatment='ME' or subplot.treatment='BM' )) and subplot.plot_id=plots.id order by subplot.id) as subplots  where (( subplot_sample.year='06' )) and (subplot_sample.sample_type_id='VSDF') and subplot_sample.subplot_id=subplots.id order by subplot_sample_id) group by subplot_sample_id")
+vf_v511 <- fetch( res, n=-1)
+dbClearResult( res)
+
+if( nrow( vf_v511) > 0 ){
+
+names( vf_v511)[2] <- 'dwd_fuel_1000h_r'
+
+} else {
+
+vf_v511 <- data.frame( dwd_fuel_1000h_r=NA)
+}
+
+vf_v508 <- merge( vf_v508, vf_v509, all=TRUE)
+vf_v508 <- merge( vf_v508, vf_v510, all=TRUE)
+vf_v508 <- merge( vf_v508, vf_v511, all=TRUE)
+replace_NA_w_0 <- function( row){
+value <- row[1]
+if( is.na( value) ) value <- 0
+return( value)
+}
+
+vf_v508['dwd_fuel_1000h_r'] <- apply( vf_v508['dwd_fuel_1000h_r'], 1, replace_NA_w_0)
+vf_v508['dwd_fuel_1000h_s'] <- apply( vf_v508['dwd_fuel_1000h_s'], 1, replace_NA_w_0)
+if( nrow( vf_v508) > 0 ){
+vf_v508 <- vf_v508[,!(colnames( vf_v508) %in% c( "subplot_sample_id"))]
+}
+subplot <- c( subplot, list( vf_v508))
+rm( vf_v508)
+
+
+if( length( set) > 0 ){
+  for( df in set ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( set)
+}
+if( length( subplot) > 0 ){
+  for( df in subplot ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( subplot)
+}
+if( nrow( out) > 0 ){
+      out <- merge( out, base, all.x=TRUE, all.y=FALSE)
+}
+rm( base)
+
+if( length( attr) > 0 ){
+  for( df in attr ){
+    if( nrow( out) == 0 ){
+      out <- df
+    } else {
+      out <- merge( out, df, all=TRUE)
+    }
+  }
+  rm( attr)
+}
+if( exists( "only") ){
+      out <- only
+}
+
+
+
+write.csv( out, "/home3/s/sagestep/public_html/temp/data20180504083344.csv", row.names=FALSE,  na="NA")
+q()

@@ -87,6 +87,104 @@ plot(p)
 
 b[which(b$DUFF1 > 20000 & b$rcode == 'WJ' & b$sp_phase == 2 & b$treatment == "ME"),]
 
+
+##############
+p <- ggplot(b, aes(x = pre_tc, y = DUFF1, color = factor(yst)))
+p <- p + geom_point(position = position_jitterdodge())
+#p <- p + geom_errorbar(data = d1, aes(ymin = mean_duff1 - se_duff1, ymax = mean_duff1 + se_duff1), 
+                       #position = position_dodge(width = 0.9), 
+                       #width = 0.3)
+p <- p + labs(title = "",
+              x = "Pre-treatment Woodland Phase", 
+              y = "Mean Fuel Loading (kg/ha) ± se", 
+              fill = "Years \nsince \ntreatment")
+p <- p + ylim(0,50000)
+p <- p + theme_bw(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.5, .5))
+p <- p + facet_grid(rcode~treatment)
+plot(p)
+
+m <- glm(DUFF1 ~ rcode + scode + treatment + factor(yst) + pre_tc + factor(yst):pre_tc, 
+         family = quasi, 
+         data = b)
+
+summary(m)$coefficients
+confint(m)
+cbind(summary(m)$coefficients, confint(m))
+
+#NO SITE CODE, NEED TO RELEVEL SO CO IS REF LEVEL
+ml <- lm(DUFF1 ~ rcode * treatment + treatment * factor(yst) * pre_tc, data = b)### NA's for PJ:BM WJ:BM --no starting values
+b$treatment <- factor(b$treatment, levels = c('CO', 'FI', 'ME', 'BM'))
+m <- glm(DUFF1 ~ rcode * treatment + treatment * factor(yst) * pre_tc, 
+         family = quasi,
+         data = b)
+summary(m)$coefficients
+cbind(summary(m)$coefficients, confint(m))
+
+#plot model
+d <- expand.grid(yst = c('1', '10'), 
+                 pre_tc= seq(0,70, by = 0.1), 
+                 rcode = c('WJ', 'JP', 'PJ'), 
+                 treatment = c('CO', 'FI', 'ME', 'BM'))
+d$yhat <- predict(m, newdata = d, type = 'response')
+
+p <- ggplot(b, aes(x = pre_tc, y = DUFF1, color = factor(yst)))
+p <- p + geom_line(data = d, aes(y = yhat))
+p <- p + geom_point(position = position_jitterdodge(), alpha = 0.5)
+p <- p + labs(title = "",
+              x = "Pre-treatment Tree Cover", 
+              y = "Mean Fuel Loading (kg/ha) ± se", 
+              fill = "Years \nsince \ntreatment")
+p <- p + ylim(0,45000)
+p <- p + theme_bw(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.5, .5))
+p <- p + facet_grid(rcode~treatment)
+plot(p)
+
+#############
+p <- ggplot(b, aes(x = pre_tc, y = DUFF1, color = factor(yst)))
+p <- p + geom_point(alpha = 0.5, position = position_jitterdodge())
+#p <- p + geom_errorbar(data = d1, aes(ymin = mean_duff1 - se_duff1, ymax = mean_duff1 + se_duff1), 
+#position = position_dodge(width = 0.9), 
+#width = 0.3)
+p <- p + labs(title = "",
+              x = "Pre-treatment Woodland Phase", 
+              y = "Mean Fuel Loading (kg/ha) ± se", 
+              fill = "Years \nsince \ntreatment")
+p <- p + ylim(0,50000)
+p <- p + theme_bw(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.5, .5))
+p <- p + facet_grid(rcode~treatment)
+plot(p)
+
+
+d2 <- b %>%
+  group_by(treatment, sp_phase, yst, rcode) %>%
+  summarise("n"=n(), 
+            "mean_duff1"=round(mean(DUFF1, na.rm=TRUE), 2),
+            "se_duff1"=round(std.e(DUFF1),2))
+d2
+
+#subset to JP region and plot
+jp <- filter(b, rcode == 'JP')
+
+p <- ggplot(jp, aes(x = pre_tc, y = DUFF1, color = factor(yst)))
+p <- p + geom_jitter()
+p <- p + labs(title = "",
+              x = "Pre-treatment Tree Cover", 
+              y = "Fuel Loading (kg/ha)", 
+              color = "Years \nsince \ntreatment")
+p <- p + ylim(0,45000)
+p <- p + theme_classic(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.5, .5))
+p <- p + facet_grid(~treatment)
+plot(p)
+
+ggsave(p, file="C:\\Users\\User\\Documents\\GitHub\\thesis\\sage_pres\\duff.png", 
+       width=10, height=6, 
+       units="in", dpi=800)
+
+
 #WJ-BM-MC013 year 10 duff load = Inf
 
 
