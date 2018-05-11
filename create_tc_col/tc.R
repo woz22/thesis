@@ -8,6 +8,9 @@ data <- read.csv("C:/Users/User/Desktop/create_tc_col/tc.csv", header = TRUE)
 head(data, n = 20)
 str(data)
 
+#standard error function for summary stats
+std.e <- function(x) sd(x, na.rm=TRUE)/sqrt(length(na.omit(x)))
+
 #remove unneeded columns
 data <- data[, c("subplot_id", "year", "dwd_fuel_10h", "tree_cover_ttl", "scode")]
 str(data)
@@ -88,6 +91,7 @@ head(data1, n = 20)
 
 which(is.na(data1$yst))
 
+?w
 
 
 

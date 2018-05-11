@@ -1,6 +1,8 @@
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(trtools)
+library(lme4)
 
 data <- read.csv("C:\\Users\\User\\Documents\\GitHub\\thesis\\duff_regions\\duff.csv", header = TRUE) 
 
@@ -168,8 +170,16 @@ d2
 #subset to JP region and plot
 jp <- filter(b, rcode == 'JP')
 
+m1 <- glm(DUFF1 ~ yst*treatment*pre_tc, data = jp)
+m <- glm(DUFF1 ~ yst*treatment*pre_tc, 
+         family = quasi(), 
+         data = jp)
+summary(m)
+jp$yhat <- predict(m, re.form = NA)
+
 p <- ggplot(jp, aes(x = pre_tc, y = DUFF1, color = factor(yst)))
 p <- p + geom_jitter()
+p <- p + geom_line(aes(y = yhat))
 p <- p + labs(title = "",
               x = "Pre-treatment Tree Cover", 
               y = "Fuel Loading (kg/ha)", 
@@ -180,9 +190,21 @@ p <- p + theme(axis.text.x = element_text(size = 18), legend.justification = c(.
 p <- p + facet_grid(~treatment)
 plot(p)
 
-ggsave(p, file="C:\\Users\\User\\Documents\\GitHub\\thesis\\sage_pres\\duff.png", 
-       width=10, height=6, 
-       units="in", dpi=800)
+jp$rest <- rstudent(m)
+summary(m)
+ggplot(data = jp, aes(x = yhat, y = rest)) + geom_point() + facet_wrap(yst~treatment)
+
+lincon(m)
+
+
+m <- lmer(DUFF1 ~ yst*pre_tc*treatment + (1|scode),
+            data = jp)
+
+
+
+#ggsave(p, file="C:\\Users\\User\\Documents\\GitHub\\thesis\\sage_pres\\duff.png", 
+      # width=10, height=6, 
+      # units="in", dpi=800)
 
 
 #WJ-BM-MC013 year 10 duff load = Inf

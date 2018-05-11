@@ -5,6 +5,9 @@ library(RColorBrewer)
 
 herb <- read.csv('C:\\Users\\User\\Documents\\GitHub\\thesis\\herb\\data_20180425112112.csv', header = TRUE)
 
+#standard error function for summary stats
+std.e <- function(x) sd(x, na.rm=TRUE)/sqrt(length(na.omit(x)))
+
 #clean data
 herb <- herb %>%
   filter(!is.na(year)) %>%
@@ -26,9 +29,42 @@ data <- left_join(herb, relation, by = 'scode')
 #create year since treatment column
 data$yst <- data$year - data$ y_imp
 
-#filter select full sampling years
-data <- filter(data, yst %in% c( 0, 1, 2, 3, 6, 10))
+data$pre_tc <- NA
+for (i in unique(data$subplot_id)) {                                                            #for each unique subplot_id
+  pre_tree_c <- data$tree_cover_ttl[data$subplot_id == i][which.min(data$yst)]                      #take the tree cover value from the first year of data collection
+  data$pre_tc[data$subplot_id == i] <- pre_tree_c                                                #put those tree cover values in a column
+}
 
+#filter select full sampling years
+data <- filter(data, yst %in% c(0, 1, 2, 3, 6, 10))
+
+###bbar graph
+summary_h <- data %>%
+  filter(rcode == 'JP') %>%
+  group_by(yst, treatment) %>%
+  summarise('mean' = mean(herb_fuel_live_wd + herb_fuel_dead_wd, na.rm = TRUE),
+            'se' = std.e(herb_fuel_live_wd + herb_fuel_dead_wd),
+            'sd' = sd(herb_fuel_live_wd + herb_fuel_dead_wd))
+
+summary_h$treatment <- factor(summary_h$treatment, levels = c('CO', 'FI', 'ME', 'BM'))
+
+p <- ggplot(summary_h, aes(x = yst, y = mean, fill = treatment))
+p <- p + geom_col(position = 'dodge')
+p <- p + geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.3)
+p <- p + scale_fill_manual(values = c('#f4a582', '#d6604d', '#92c5de', '#4393c3'))
+p <- p + scale_x_discrete(limits = seq(0, 10, by = 2))
+p <- p + scale_y_continuous(limits = c(0,1100), expand = c(0,0))
+p <- p + labs(y = 'Mean Fuel Loading (kg/ha) ± SE ',
+              x = 'Years Since Treatment',
+              color = 'Pre-Treatment \nWoodland Phase')
+p <- p + theme_bw(base_size = 18)
+p <- p + theme(axis.text.x = element_text(size = 18))
+p <- p + facet_grid(~treatment)
+plot(p)
+
+ggsave(p, file="C:\\Users\\User\\Documents\\GitHub\\thesis\\sage_pres\\herb.png", 
+       width=10, height=4, 
+       units="in", dpi=800)
 
 ###plot only jp
 d <- filter(data, rcode =='JP')
@@ -81,6 +117,9 @@ a <- a + geom_histogram() + facet_wrap(rcode ~ yst)
 plot(a)
 
 
+###bar graph
+
+
 
 ####
 p <- ggplot(data = sum_herb, aes(x = yst, y = mean, color = factor(sp_phase)))
@@ -96,6 +135,7 @@ sh$treatment <- factor(sh$treatment, levels = c('CO', 'FI', 'ME', 'BM'))
 
 p <- ggplot(data = sh, aes(x = yst, y = mean, color = sp_phase))
 p <- p + geom_point(size = 2)
+p <- p + geom_line()
 #p <- p + geom_errorbar(data = sh, aes(ymin = mean - se, ymax = mean + se), 
   #                     width = 0.3)
 p <- p + facet_grid(~treatment) + theme_bw()
@@ -110,6 +150,8 @@ for (i in unique(data$subplot_id)) {                                            
   pre_tree_c <- data$tree_cover_ttl[data$subplot_id == i][which.min(data$year)]                      #take the tree cover value from the first year of data collection
   data$pre_tc[data$subplot_id == i] <- pre_tree_c                                                #put those tree cover values in a column
 }
+
+
 
 
 #sub_data <- filter(data, yst %in% c(0,0,1,3,10))
@@ -148,10 +190,10 @@ m <- lm(herb_fuel_live_wd ~ yst*pre_tc, data = dtdi)
 summary(m)
 
 p <- ggplot(dtdi, aes(x = yst, y = herb_fuel_live_wd, color = TDI))
-p <- p + geom_jitter(width = .1)
+p <- p + geom_jitter(width = .1, size = 2)
 p <- p + facet_grid(~treatment) + theme_bw()
 p <- p + scale_x_discrete(limits = seq(0, 10, by = 1), name = 'Years Since Treatment')
-p <- p + scale_color_gradient(low = '#ccece6', high = '#006d2c')
+p <- p + scale_color_gradient(low = '#ccece6', high = '#006d2c') + facet_wrap(~scode)
 plot(p)
 
 
@@ -160,6 +202,7 @@ p <- p + geom_jitter(width = .2, size = 3)
 p <- p + facet_grid(~treatment) + theme_bw()
 p <- p + scale_x_discrete(limits = seq(0, 10, by = 1), name = 'Years Since Treatment')
 p <- p + scale_colour_gradient2(low = '#313695', mid = '#ffffbf', high = '#d73027', midpoint = mean(dtdi$TDI))
+p <- p + facet_wrap(~scode)
 plot(p)
 
 str(dtdi)
