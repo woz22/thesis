@@ -53,7 +53,7 @@ data <- select(d, c(subplot_id, scode, rcode, treatment, sp_phase, year,
 
 #data cleaning and subsetting function
 clean_subset <- function(data, region, phase, treatment1, scode, y_imp){
-  data <- filter(data, year != 'NA' | sp_phase != 'NA')   #remove rows where year = NA or sp_phase = NA
+  data <- filter(data, !is.na(year) | !is.na(sp_phase))   #remove rows where year = NA or sp_phase = NA
   data <- distinct(data)                                  #remove duplicate rows
   
   #remove rows where year != 10 years since treatment
@@ -68,7 +68,7 @@ clean_subset <- function(data, region, phase, treatment1, scode, y_imp){
   data <- filter(data, yst == 10)                      #subset data where yst = 10
   
   
-  #change shrub heights of 0 to NA so that they get removed when calculating quantiles, means#############################CHANGE PER REGION
+  #change shrub heights of 0 to NA so that they get removed when calculating quantiles, means###########################################CHANGE PER REGION
   data$height_shrub_ARTRW8[data$height_shrub_ARTRW8 == 0] <- NA
   data$height_shrub_CHVI8[data$height_shrub_CHVI8 == 0] <- NA
   
@@ -124,9 +124,10 @@ stats <- function(data){
 }
 
 ###########################################################################################################alter for each region/phase/treatment
+
 scode <- c('GR', 'ON', 'SC') #specify site codes
 y_imp <- c(7, 6, 7)          #specify year of implementation for sites      
-data <- clean_subset(data, region = 'JP', phase = '3', treatment1 = 'FI', scode = scode, y_imp = y_imp)
+data <- clean_subset(data, region = 'JP', phase = '3', treatment1 = 'BM', scode = scode, y_imp = y_imp)
 
 ################################################################################################################################
 
@@ -140,7 +141,7 @@ d <- arrange(d, Variable, Category, Component)
 
 #########################################################################################################################alter sheetName for each region/phase/treatment
 
-write.xlsx(d, file = 'C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\fuel_table_tidy_UTAH.xlsx', 
-           sheetName = 'pj_co_1', 
+write.xlsx2(d, file = 'C:\\Users\\User\\Documents\\GitHub\\thesis\\fuels_guide\\jp\\fuel_table_tidy_UTAH1.xlsx', 
+           sheetName = 'BM2', 
            append = TRUE)
 
