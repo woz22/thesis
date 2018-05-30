@@ -1,4 +1,5 @@
 library(ggplot2)
+library(dplyr)
 library(lme4)
 library(trtools)
 
@@ -37,28 +38,75 @@ plot(f1)
 
 
 
-#models
+#Masticated 1h fuels
 m1 <- lmer(kgha_1h ~ TC + yst + TC:yst + (1|site), data = d)
 summary(m1)
 lincon(m1)
-qqnorm(resid(m1))
+d <- filter(d, !is.na(sp_phase))
+d$yhat1 <- predict(m1, re.form = NA)
+
+f1 <- ggplot(data = d, aes(x = TC, y = kgha_1h, color = yst))
+f1 <- f1 + geom_jitter()
+f1 <- f1 + geom_line(aes(y = yhat1))
+f1 <- f1 + theme_classic()
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
+                y = 'Fuel Loading (kg/ha)')
+plot(f1)
+
+qqnorm(resid(m1)); qqline(resid(m1))
 
 
+
+#Masticated 10h fuels
 m10 <- lmer(kgha_10h ~ TC + yst + TC:yst + (1|site), data = d)
 summary(m10)
 lincon(m10)
-qqnorm(resid(m10))
 
+d$yhat10 <- predict(m10, re.form = NA)
+f1 <- ggplot(data = d, aes(x = TC, y = kgha_10h, color = yst))
+f1 <- f1 + geom_jitter()
+f1 <- f1 + geom_line(aes(y = yhat10))
+f1 <- f1 + theme_classic()
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
+                y = 'Fuel Loading (kg/ha)')
+plot(f1)
+
+qqnorm(resid(m10)); qqline(resid(m10))
+
+
+
+#Masticated 100 + 1000h fuels
 m100_1000 <- lmer(kgha_100_1000h ~ TC + yst + TC:yst + (1|site), data = d)
 summary(m100_1000)
 lincon(m100_1000)
-qqnorm(resid(m100_1000))
+
+d$yhat100_1000 <- predict(m100_1000, re.form = NA)
+f1 <- ggplot(data = d, aes(x = TC, y = kgha_100_1000h, color = yst))
+f1 <- f1 + geom_jitter()
+f1 <- f1 + geom_line(aes(y = yhat100_1000))
+f1 <- f1 + theme_classic()
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
+                y = 'Fuel Loading (kg/ha)',
+                color = 'Year Since \nTreatment')
+plot(f1)
+
+qqnorm(resid(m100_1000)); qqline(resid(m100_1000))
+
+
+
+
+
+
 
 m <- lmer(log(kgha_1h) ~ TC + yst + TC: yst + (1|site), data = d)
 summary(m)
 lincon(m)
 
-residuals.merMod(m1)
+
+
 
 #plot by pre_tc on x-axis and fuel loading on y-axis
 d <- filter(d, !is.na(sp_phase))
@@ -68,8 +116,8 @@ f1 <- ggplot(data = d, aes(x = TC, y = kgha_1h, color = yst))
 f1 <- f1 + geom_jitter()
 f1 <- f1 + geom_line(aes(y = yhat1))
 f1 <- f1 + theme_classic()
-f1 <_ f1 + labs(title = 'Masticated 1h Fuels'
-                x = 'Pre-treatment Tree Cover (%)'
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
                 y = 'Fuel Loading (kg/ha)')
 plot(f1)
 
@@ -78,8 +126,8 @@ f1 <- ggplot(data = d, aes(x = TC, y = kgha_10h, color = yst))
 f1 <- f1 + geom_jitter()
 f1 <- f1 + geom_line(aes(y = yhat10))
 f1 <- f1 + theme_classic()
-f1 <_ f1 + labs(title = 'Masticated 1h Fuels'
-                x = 'Pre-treatment Tree Cover (%)'
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
                 y = 'Fuel Loading (kg/ha)')
 plot(f1)
 
@@ -89,8 +137,8 @@ f1 <- ggplot(data = d, aes(x = TC, y = kgha_100_1000h, color = yst))
 f1 <- f1 + geom_jitter()
 f1 <- f1 + geom_line(aes(y = yhat100_1000))
 f1 <- f1 + theme_classic()
-f1 <_ f1 + labs(title = 'Masticated 1h Fuels'
-                x = 'Pre-treatment Tree Cover (%)'
+f1 <- f1 + labs(title = 'Masticated 1h Fuels',
+                x = 'Pre-treatment Tree Cover (%)',
                 y = 'Fuel Loading (kg/ha)',
                 color = 'Year Since \nTreatment')
 plot(f1)
