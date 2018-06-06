@@ -1,7 +1,7 @@
 ---
-title: "Masticated Fuels Analyses"
+title: "Masticated Fuels Analyses: Square Root Transformation of Response Variables"
 author: "Sam Wozniak"
-date: "May 13, 2018"
+date: "June 6, 2018"
 output:
   pdf_document: 
     toc: true
@@ -34,10 +34,10 @@ d <- select(d, -one_of(columns))
 # create subplot_id column for d
 d$tcode <- 'GC'
 d$rcode <- 'JP'
-d$scode <- d$site
 d$pre_sub <- ifelse(d$subplot < 10, paste0('00', d$subplot), paste0('0', d$subplot))
 d$pre_sub <- paste0(d$tcode, d$pre_sub)
-d <- unite(d, subplot_id, rcode, site, pre_sub, sep = '-') 
+d$site1 <- d$site
+d <- unite(d, subplot_id, rcode, site1, pre_sub, sep = '-') 
 ```
 
 ```{r, include = FALSE}
@@ -51,6 +51,7 @@ tdi <- unite(tdi, subplot_id, rcode, scode, pre_sub, sep = '-')
 minimal <- select(tdi, subplot_id, TDI, TC)
 
 l <- left_join(live, minimal, by = 'subplot_id')
+l$site <- l$scode
 ```
 
 ```{r, include = FALSE}
@@ -58,21 +59,51 @@ d$dwd_1hr <- d$kgha_1h
 d$dwd_10hr <- d$kgha_10h
 d$dwd_100_1000hr <- d$kgha_100_1000h
 d$pre_tree_cvr <- d$TC
-d$site <- d$scode
 
 d <- filter(d, !is.na(TC))
 ```
 
-#Masticated 1-hr fuels
+\pagebreak
+
+#Notes
+
+Years since treatment is treated as a factor. This means that the effect of year since treatment is not an incremental increase (or decrease) from 0 to 1, 1 to 2, or 2 to 3 years since treatment. Instead, there is an effect of year since treatment for each year relative to the reference year (1 yst for downed woody debris, and pre-treatment for all other response variables).
+
+For dead fuels (masticated downed woody debris and tree litter + duff), pre-treatment tree cover is used as an explanatory variable.
+
+For live response variables (e.g. herbaceous fuels, perennial grass cover, shrub cover, tree cover, tree density), pre-treatment Tree Dominance Index (TDI) is used as an explanatory variable. TDI is used instead of pre-treatment tree cover because the response of living plants over time depends upon the relative competition between plant functional groups at the time of treatment.
+
+#Definitions of acronyms and abbreviations used in code
+
+yst = years since treatment; 0 represents pre-treatment
+
+TDI = Tree Dominance Index (pre-treatment tree cover/ (pre-treatment perennial grass cover + pre-t. shrub cover + pre-t. tree cover))
 
 pre_tree_cvr = pre-treatment tree cover (%)
 
-yst = years since treatment; 0 represents pre-treatment; yst is a factor for masticated fuels
+dwd_1hr = Downed woody debris of 1-hr class (< 1/4 in diameter)
+
+dwd_10hr = Downed woody debris of 10-hr class (1/4 - 1 in diameter)
+
+dwd_100_1000hr = Downed woody debris of 100-hr and 1000-hr classes (1 - 3 and 3+ inches diameter); these two fuel classes were combined because 1000-hr fuels are very infrequent (vast majority of subplots have 0 1000-hr fuels) on masticated sites 
+
+herb_ttl = live + dead herbaceous fuel loading
+
+\pagebreak
+
+#Masticated 1-hr fuels
+
+##Notes
+
+Sampling at 5-6 years: 2/3 sites (GR, SC) were sampled 5 years since treatment, and 1 site (ON) was sampled at 6 years post-treatment
 
 ##Model
 ```{r}
-m <- lmer(sqrt(dwd_1hr) ~ pre_tree_cvr + yst + pre_tree_cvr:yst + (1|site), data = d)
+m <- lmer(sqrt(dwd_1hr) ~ pre_tree_cvr + yst + pre_tree_cvr:yst + 
+            (1|site), data = d)
 ```
+
+
 
 ```{r, echo = FALSE}
 #Response averaged across sites
@@ -89,11 +120,15 @@ p <- p + facet_wrap(~yst, ncol = 2)
 plot(p)
 ```
 
+\pagebreak
+
 ##Inferences 
 ```{r, echo = FALSE}
 summary(m)
 lincon(m)
 ```
+
+\pagebreak
 
 ##QQPlot and Plotted Residuals
 ```{r, echo = FALSE}
@@ -103,7 +138,7 @@ ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() +
 ```
 
 
-```{r, include = FALSE}
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 d$yhat1 <- predict(m)
 
@@ -123,18 +158,19 @@ ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() +
   facet_wrap(site~yst) + labs(title = 'Residuals by Years Since Treatment and Site')
 ```
 
+\pagebreak
+
 #Masticated 10-hr fuels
-
-pre_tree_cvr = pre-treatment tree cover (%)
-
-yst = years since treatment; 0 represents pre-treatment
 
 ##Model
 ```{r}
-m <- lmer(sqrt(dwd_10hr) ~ pre_tree_cvr + yst + pre_tree_cvr:yst + (1|site) + (1|subplot_id), data = d)
+m <- lmer(sqrt(dwd_10hr) ~ pre_tree_cvr + yst + pre_tree_cvr:yst + 
+            (1|site), data = d)
 ```
 
-```{r}
+
+
+```{r, echo = FALSE}
 #Response averaged across sites
 d$yhat10 <- predict(m, re.form = NA)
 
@@ -149,22 +185,26 @@ p <- p + facet_wrap(~yst)
 plot(p)
 ```
 
+\pagebreak
+
 ##Inferences
-```{r}
+```{r, echo = FALSE}
 summary(m)
 lincon(m)
 ```
+
+\pagebreak
 
 ##QQPlot and Plotted Residuals
 ```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + 
   geom_point() + 
-  facet_wrap(~yst, ncol = 4) + 
+  facet_wrap(~yst, ncol = 2) + 
   labs(title = 'Residuals by Years Since Treatment')
 ```
 
-```{r, include = FALSE}
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 d$yhat10 <- predict(m)
 p <- ggplot(data = d, aes(x = pre_tree_cvr, y = sqrt(dwd_10hr), color = site))
@@ -184,15 +224,18 @@ ggplot(m, aes(x = .fitted, y = .resid)) +
   labs(title = 'Residuals by Years Since Treatment and Site')
 ```
 
-#Masticated 100 + 1000-hr fuels
-pre_tree_cvr = pre-treatment tree cover (%)
+\pagebreak
 
-yst = years since treatment; 0 represents pre-treatment
+#Masticated 100 + 1000-hr fuels
+
 
 ##Model
 ```{r}
-m <- lmer(sqrt(dwd_100_1000hr) ~ pre_tree_cvr + yst + pre_tree_cvr:yst + (1|site) + (1|subplot_id), data = d)
+m <- lmer(sqrt(dwd_100_1000hr) ~ pre_tree_cvr + factor(yst) + pre_tree_cvr:factor(yst) + 
+            (1|site), data = d)
 ```
+
+
 
 ```{r, echo = FALSE}
 #Response avereaged across sites
@@ -202,18 +245,22 @@ p <- ggplot(data = d, aes(x = pre_tree_cvr, y = sqrt(dwd_100_1000hr)))
 p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat100_1000))
 p <- p + theme_classic()
-p <- p + facet_wrap(~yst, ncol = 4)
+p <- p + facet_wrap(~yst, ncol = 2)
 p <- p + labs(title = 'Masticated 100-hr + 1000-hr Fuels by Years Since Treatment',
                 x = 'Pre-treatment Tree Cover (%)',
                 y = 'Square Root of Fuel Loading (kg/ha)')
 plot(p)
 ```
 
+\pagebreak
+
 ##Inferences
 ```{r, echo = FALSE}
 summary(m)
 lincon(m)
 ```
+
+\pagebreak
 
 ##QQPlot and Plotted Residuals
 ```{r, echo = FALSE}
@@ -224,7 +271,7 @@ ggplot(m, aes(x = .fitted, y = .resid)) +
   labs(title = 'Residuals by Years Since Treatment')
 ```
 
-```{r, include = FALSE}
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 d$yhat100_1000 <- predict(m)
 
@@ -246,8 +293,14 @@ ggplot(m, aes(x = .fitted, y = .resid, color = site)) +
        color = 'site')
 ```
 
+\pagebreak
 
 #Tree Litter + Duff Fuels
+
+##Notes
+
+In model code, 'duff' refers to tree litter + duff.
+
 ```{r, include = FALSE}
 data <- read.csv("C:\\Users\\User\\Documents\\GitHub\\thesis\\mastication_analysis\\duff.csv",
                  header = TRUE) 
@@ -276,11 +329,11 @@ d <- left_join(data, relation, by = "scode")
 #create year since treatment column
 d$yst <- d$year - d$y_imp
 
-#create column with pre-treatment tree cover titled 'pre_tc'
-d$pre_tc <- NA
+#create column with pre-treatment tree cover titled 'pre_tree_cvr'
+d$pre_tree_cvr <- NA
 for (i in unique(d$subplot_id)) {                                                            #for each unique subplot_id
   pre_tree_c <- d$tree_cover_ttl[d$subplot_id == i][which.min(d$year)]                      #take the tree cover value from the first 
-  d$pre_tc[d$subplot_id == i] <- pre_tree_c                                                #put those tree cover values in a column
+  d$pre_tree_cvr[d$subplot_id == i] <- pre_tree_c                                                #put those tree cover values in a column
 }
 
 #subset columns for yst <=1 or yst = 10
@@ -300,18 +353,20 @@ b <- b[-which(is.na(b$duff)),]
 
 d <- filter(b, treatment == 'BM')
 
-
 d$site <- d$scode
+
 ```
 
 ##Model
 ```{r}
-m <- lmer(sqrt(duff) ~ yst + pre_tc + yst:pre_tc + (1|site) + (1|subplot_id), data = d)
+m <- lmer(sqrt(duff) ~ factor(yst) + pre_tree_cvr + factor(yst):pre_tree_cvr + 
+            (1|site), data = d)
 ```
+
 
 ```{r, echo = FALSE}
 d$yhat_duff <- predict(m, re.form = NA)
-p <- ggplot(data = d, aes(x = pre_tc, y = sqrt(duff)))
+p <- ggplot(data = d, aes(x = pre_tree_cvr, y = sqrt(duff)))
 p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_duff))
 p <- p + theme_classic() + facet_wrap(~yst, ncol = 2)
@@ -321,11 +376,15 @@ p <- p + labs(title = 'Tree Litter + Duff',
 plot(p)
 ```
 
+\pagebreak
+
 ##Inferences 
-```{r}
+```{r, echo = FALSE}
 summary(m)
 lincon(m)
 ```
+
+\pagebreak
 
 ##QQPlot and Plotted Residuals
 ```{r, echo = FALSE}
@@ -333,34 +392,31 @@ qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
 ```
 
-```{r, include = FALSE}
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 d$yhat_duff <- predict(m)
-p <- ggplot(data = d, aes(x = pre_tc, y = sqrt(duff), color = site))
+p <- ggplot(data = d, aes(x = pre_tree_cvr, y = sqrt(duff), color = site))
 p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_duff))
-p <- p + theme_classic() + facet_wrap(scode~yst, ncol = 2)
+p <- p + theme_classic() + facet_wrap(site~yst, ncol = 2)
 p <- p + labs(title = 'Tree Litter + Duff',
                 x = 'Pre-treatment Tree Cover (%)',
                 y = 'Square Root of Fuel Loading (kg/ha)',
                 color = 'Year Since \nTreatment')
 plot(p)
 
-ggplot(m, aes(x = .fitted, y = .resid, color = scode)) + 
-  geom_point() + facet_wrap(scode~yst, nrow = 3)
+ggplot(m, aes(x = .fitted, y = .resid, color = site)) + 
+  geom_point() + facet_wrap(site~yst, nrow = 3)
 ```
 
-#For shrub and Herbaceous biomass and cover, use tree dominance index (TDI) instead of pre-treatment tree cover.
+\pagebreak
 
-Tree Dominance Index (TDI) = (pre-treatment tree cover)/(pre-treatment tree cover + pre-treatment grass cover + pre-treatment shrub cover)
+#Herbaceous fuel loading (live + dead)
 
-#Herbaceous Fuels
-yst = years since treatment
+##Notes:
+*Investigate value of zero at Onaqui, yst = 10
 
-herb_ttl = live + dead herbaceous fuel loading
-
-**Investigate value of zero at Onaqui, yst = 10
-```{r, include = FALSE}
+```{r, echo = FALSE}
 scode <- c('ON', 'GR', 'SC')
 y_imp <- c(6, 7, 7)
 relation <- data.frame(scode, y_imp)
@@ -385,15 +441,17 @@ precip <- precipitation %>%
   filter(yst %in% c(0,1,2,3,6,10))
 l <- left_join(l, precip, by = c('scode', 'yst'))
 l$site <- l$scode
+
+#m <- lmer(sqrt(herb_ttl) ~ TDI + yst + yst:TDI + (1|scode) + (1|OJprecip), data = l)
 ```
 
 ##Model
 ```{r}
-m <- lmer(sqrt(herb_ttl) ~ TDI + yst + yst:TDI + (1 + yst|site), data = l)
-#m <- lmer(herb_ttl ~ TDI + yst + yst:TDI + (1 + yst|scode) + (1|OJprecip), data = l)
-summary(m)
-lincon(m)
+m <- lmer(sqrt(herb_ttl) ~ TDI + factor(yst) + factor(yst):TDI + 
+            (1|site), data = l)
+```
 
+```{r, echo = FALSE}
 #by yst
 l$yhat_herb <- predict(m, re.form = NA)
 p <- ggplot(data = l, aes(x = TDI, y = sqrt(herb_ttl)))
@@ -406,10 +464,25 @@ p <- p + labs(title = 'Herbaceous Fuels',
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
 p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
 
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 l$yhat_herb <- predict(m)
 p <- ggplot(data = l, aes(x = TDI, y = sqrt(herb_ttl), color = site))
@@ -426,37 +499,38 @@ plot(p)
 
 ggplot(m, aes(x = .fitted, y = .resid)) + 
   geom_point() + 
-  facet_wrap(scode~yst, nrow = 3, ncol = 6)
+  facet_wrap(site~yst, nrow = 3, ncol = 6)
 ```
 
+\pagebreak
+
 #Shrub Fuels
-**Data errors: Onaqui year 6, zero values are incorrect (JP-ON-GC-006, JP-ON-GC-010 have high shrub volumes but zero biomass)
+*Data error: two values of zero at Years since treatment = 6 & TDI ~ 0.3; zero values are incorrect (JP-ON-GC-006, JP-ON-GC-010 have high shrub volumes but zero biomass)
 
-**Missing data: no shrub data for Onaqui when YST = 0 (calendar year = 2006)
+*Missing data: no shrub data for Onaqui when YST = 0 (calendar year = 2006)
 
-shrub_fuel = shrub fuel loading 
-
-TDI = tree dominance index
-
-yst = years since treatment
-
-scode = site
-```{r}
+```{r, echo = FALSE}
 l$shrub_fuel <- abs(l$shrub_bio_ttl)
 
 l$shrub_fuel[l$scode == 'ON' & l$yst == 0] <- NA
 
 l2 <- subset(l, !is.na(shrub_fuel))
 l2$scode <- factor(l2$scode, levels = c('GR', 'SC', 'ON'))
+l2$site <- l2$scode
+```
 
-m <- lmer(sqrt(shrub_fuel) ~ TDI + yst + yst:TDI + (1 + yst|scode), data = l2)
-summary(m)
-lincon(m)
+##Model
+```{r}
+m <- lmer(sqrt(shrub_fuel) ~ TDI + factor(yst) + factor(yst):TDI + 
+            (1|site), data = l2)
+```
 
+
+```{r, echo = FALSE}
 #by yst
 l2$yhat_shrub <- predict(m, re.form = NA)
 p <- ggplot(data = l2, aes(x = TDI, y = sqrt(shrub_fuel)))
-p <- p + geom_point()
+p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_shrub))
 p <- p + theme_bw()
 p <- p + labs(title = 'Shrub Fuels',
@@ -465,13 +539,28 @@ p <- p + labs(title = 'Shrub Fuels',
 p <- p + scale_x_continuous(breaks = seq(0,1, by = .3))
 p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
 
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 l2$yhat_shrub <- predict(m)
-p <- ggplot(data = l2, aes(x = TDI, y = sqrt(shrub_fuel), color = scode))
+p <- ggplot(data = l2, aes(x = TDI, y = sqrt(shrub_fuel), color = site))
 p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_shrub))
 p <- p + theme_bw()
@@ -480,42 +569,67 @@ p <- p + labs(title = 'Shrub Fuels',
                 y = 'Square Root of Fuel Loading (kg/ha)',
                 color = 'site')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = .3))
-p <- p + facet_wrap(scode~yst, ncol = 6, nrow = 3)
+p <- p + facet_wrap(site ~ yst, ncol = 6, nrow = 3)
 plot(p)
 
-
-ggplot(m, aes(x = .fitted, y = .resid, color = scode)) + 
+ggplot(m, aes(x = .fitted, y = .resid, color = site)) + 
   geom_point() + 
-  facet_wrap(scode~yst, ncol = 6, nrow = 3)
+  facet_wrap(site~yst, ncol = 6, nrow = 3)
 ```
 
-###Shrub Cover
+\pagebreak
 
-Note: Shrub cover increase when yst = 6 for scode = SC & GR but decrease in herb biomass
+#Shrub Cover
+
+##Notes
+
+Shrub cover increase when yst = 6 for site = SC & GR but decrease in herb biomass
+
+##Model
 ```{r}
-m <- lmer(can_cover_pt_shrub ~ TDI + yst + yst:TDI + (1 + yst|scode), data = l)
-summary(m)
-lincon(m)
+m <- lmer(sqrt(can_cover_pt_shrub) ~ TDI + factor(yst) + factor(yst):TDI + 
+            (1|site), data = l)
+```
 
+
+
+```{r, echo = FALSE}
 #by yst
 l$yhat_sh_cvr <- predict(m, re.form = NA)
-p <- ggplot(data = l, aes(x = TDI, y = can_cover_pt_shrub))
+p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_shrub)))
 p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_sh_cvr))
 p <- p + theme_bw()
 p <- p + labs(title = 'Shrub Cover',
                 x = 'Tree Dominance Index',
-                y = 'Fuel Loading (kg/ha)')
+                y = 'Shrub Cover (%)')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
 p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Plotted Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
 
+
+
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 l$yhat_sh_cvr <- predict(m)
-p <- ggplot(data = l, aes(x = TDI, y = can_cover_pt_shrub, color = scode))
+p <- ggplot(data = l, aes(x = TDI, y = can_cover_pt_shrub, color = site))
 p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_sh_cvr))
 p <- p + theme_bw()
@@ -524,21 +638,27 @@ p <- p + labs(title = 'Shrub Cover',
                 y = 'Fuel Loading (kg/ha)',
                 color = 'site')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
-p <- p + facet_wrap(scode~yst, ncol = 6, nrow = 3)
+p <- p + facet_wrap(site~yst, ncol = 6, nrow = 3)
 plot(p)
 
 
 ggplot(m, aes(x = .fitted, y = .resid)) + 
   geom_point() + 
-  facet_wrap(scode~yst, ncol = 6, nrow = 3)
+  facet_wrap(site~yst, ncol = 6, nrow = 3)
 ```
 
-###Perennial Grass Cover
-```{r}
-m <- lmer(sqrt(can_cover_pt_pgrass) ~ TDI + yst + yst:TDI + (1|scode) + (1|subplot_id), data = l)
-summary(m)
-lincon(m)
+\pagebreak
 
+#Perennial Grass Cover
+
+##Model
+```{r}
+m <- lmer(sqrt(can_cover_pt_pgrass) ~ TDI + factor(yst) + factor(yst):TDI + 
+            (1|site), data = l)
+```
+
+
+```{r, echo = FALSE}
 #by yst
 l$yhat_pgrass_cvr <- predict(m, re.form = NA)
 p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_pgrass)))
@@ -546,18 +666,33 @@ p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_pgrass_cvr))
 p <- p + theme_bw()
 p <- p + labs(title = 'Perennial Tall Grass Cover',
-                x = 'Tree Dominance Index',
-                y = 'Perennial Tall Grass Cover (%)')
+                x = 'Pre-treatment Tree Dominance Index',
+                y = 'Square Root of Perennial Tall Grass Cover (%)')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
 p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Plotted Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
 
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 l$yhat_pgrass_cvr <- predict(m)
-p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_pgrass), color = scode))
+p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_pgrass), color = site))
 p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_pgrass_cvr))
 p <- p + theme_bw()
@@ -566,21 +701,31 @@ p <- p + labs(title = 'Perennial Tall Grass Cover',
                 y = 'Perennial Tall Grass Cover (%)',
                 color = 'site')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
-p <- p + facet_wrap(scode~yst, ncol = 6, nrow = 3)
+p <- p + facet_wrap(site~yst, ncol = 6, nrow = 3)
 plot(p)
 
 ggplot(m, aes(x = .fitted, y = .resid)) + 
   geom_point() + 
-  facet_wrap(scode~yst, ncol = 6, nrow = 3)
+  facet_wrap(site~yst, ncol = 6, nrow = 3)
 ```
 
-###Annual Grass Cover
-Note: what is going on at Scipio in yst = 6,10? Decrease in annual grass cover
-```{r}
-m <- lmer(sqrt(can_cover_pt_agrass) ~ TDI + yst + yst:TDI + (1 + yst|scode), data = l)
-summary(m)
-lincon(m)
+\pagebreak
 
+#Annual Grass Cover
+
+##Notes
+
+what is going on at Scipio in yst = 6,10? Decrease in annual grass cover
+
+##Model
+```{r}
+m <- lmer(sqrt(can_cover_pt_agrass) ~ TDI + factor(yst) + factor(yst):TDI + 
+            (1|site), data = l)
+```
+
+
+
+```{r, echo = FALSE}
 #by yst
 l$yhat_agrass_cvr <- predict(m, re.form = NA)
 p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_agrass)))
@@ -588,18 +733,33 @@ p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_agrass_cvr))
 p <- p + theme_bw()
 p <- p + labs(title = 'Annual Grass Cover',
-                x = 'Tree Dominance Index',
+                x = 'Pre-treatment Tree Dominance Index',
                 y = 'Square Root of Annual Grass Cover (%)')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
 p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences 
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Plotted Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
 
+```{r, eval = FALSE, include = FALSE}
 #by yst and site
 l$yhat_agrass_cvr <- predict(m)
-p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_agrass), color = scode))
+p <- ggplot(data = l, aes(x = TDI, y = sqrt(can_cover_pt_agrass), color = site))
 p <- p + geom_point()
 p <- p + geom_line(aes(y = yhat_agrass_cvr))
 p <- p + theme_bw()
@@ -608,84 +768,196 @@ p <- p + labs(title = 'Annual Grass Cover',
                 y = 'Square Root of Annual Grass Cover (%)', 
                 color = 'site')
 p <- p + scale_x_continuous(breaks = seq(0,1, by = 0.3))
-p <- p + facet_wrap(scode~yst, ncol = 6, nrow = 3)
+p <- p + facet_wrap(site~yst, ncol = 6, nrow = 3)
 plot(p)
 
 ggplot(m, aes(x = .fitted, y = .resid)) + 
   geom_point() + 
-  facet_wrap(scode~yst, ncol = 6, nrow = 3)
+  facet_wrap(site~yst, ncol = 6, nrow = 3)
 ```
 
-###Tree Density >5 cm
+\pagebreak
 
-```{r}
-td$tree_density <- td$tree_dns_5_50_JUOS + td$tree_dns_gt50_JUOS + td$tree_dns_5_50_PIED + td$tree_dns_gt50_PIED
+#Notes on Tree Density and Cover
+
+*Ask Scott--was tree density for trees > 50 cm measured at 1,2,3,6 yst?
+
+*Should I break this down by species (JUOS vs PIED)?
+
+```{r, echo = FALSE}
+#td$tree_density <- td$tree_dns_5_50_JUOS + td$tree_dns_gt50_JUOS + td$tree_dns_5_50_PIED + td$tree_dns_gt50_PIED
 td <- filter(td, (yst %in% c(-1,1,2,3,6,10) & scode %in% c('SC', 'GR')) | 
                (yst %in% c(0,1,2,3,6,10) & scode == 'ON'))
 td$yst[td$yst == -1] <- 0  #so that all pre-treatment years are grouped together
+
+td$site <- td$scode
 ```
 
-MODEL FAILS TO CONVERGE UNLESS I TREAT YST AS FACTOR
-```{r}
-m <- lmer(sqrt(tree_dns_gt50_JUOS + tree_dns_gt50_PIED) ~ 
-            TC + factor(yst) + factor(yst):TC + (1 + factor(yst)|scode), data = td)
-summary(m)
-lincon(m)
+#Tree Density for trees < 5 cm in height
 
+##Notes
+
+*Model and graph below are included to show that tree density for trees < 5cm should be excluded from analysis. Data is too coarse: if there was one tree < 5 cm found in a subplot, that converts to 889 trees/ha because of sampling density and scaling factor. 
+
+##Model
+```{r, include = FALSE}
+td$tree_dns_lt5 <- td$tree_dns_lt5_JUOS + td$tree_dns_lt5_PIED + td$tree_dns_lt5_PIMO
+```
+
+```{r}
+m <- lmer(sqrt(tree_dns_lt5) ~ TDI + factor(yst) + factor(yst):TDI + (1|site), 
+          data = td)
+```
+
+```{r, echo = FALSE}
 #by yst
-td$yhat_tree_dens <- predict(m)
-p <- ggplot(data = td, aes(x = TC, 
-                           y = sqrt(tree_dns_gt50_JUOS + tree_dns_gt50_PIED)))
+td$yhat_tree_dns_lt5 <- predict(m, re.form = NA)
+p <- ggplot(data = td, 
+            aes(x = TDI, y = tree_dns_lt5))
 p <- p + geom_point()
 p <- p + theme_bw()
-p <- p + geom_line(aes(y = yhat_tree_dens))
-p <- p + labs(title = 'Tree Density for trees > 50 cm',
-                x = 'Pre-Treatment Tree Cover (%)',
+p <- p + geom_line(aes(y = yhat_tree_dns_lt5))
+p <- p + labs(title = 'Tree Density for trees < 5 cm in height',
+                x = 'Pre-treatment Tree Dominance Index',
                 y = 'Square Root of Tree Density (stems/ha)')
-#p <- p + scale_x_continuous(breaks = seq(0,10, by = 2))
-p <- p + facet_wrap(scode~yst, ncol = 6)
+p <- p + facet_wrap(~yst, ncol = 3)
 plot(p)
 
+hist(td$tree_dns_lt5)
+```
+
+\pagebreak
+
+#Tree Density for trees between 5 and 50 cm in height
+
+##Model
+
+```{r, include = FALSE}
+td$tree_dns_5_50 <- td$tree_dns_5_50_JUOS + td$tree_dns_5_50_PIED + td$tree_dns_5_50_PIMO
+```
+
+
+```{r}
+m <- lmer(tree_dns_5_50 ~ TDI + factor(yst) + factor(yst):TDI + (1|site), 
+          data = td)
+```
+
+```{r, echo = FALSE}
+#by yst
+td$yhat_tree_dns_5_50 <- predict(m, re.form = NA)
+p <- ggplot(data = td, 
+            aes(x = TDI, y = tree_dns_5_50))
+p <- p + geom_point()
+p <- p + theme_bw()
+p <- p + geom_line(aes(y = yhat_tree_dns_5_50))
+p <- p + labs(title = 'Tree Density for trees between 5 and 50 cm in height',
+                x = 'Pre-treatment Tree Dominance Index (%)',
+                y = 'Square Root of Tree Density (stems/ha)')
+p <- p + facet_wrap(~yst, ncol = 3)
+plot(p)
+```
+
+\pagebreak
+
+##Inferences
+```{r}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Plotted Residuals
+```{r}
 qqnorm(resid(m)); qqline(resid(m))
 ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
-
-#by yst and site
-td$yhat_tree_dens <- predict(m)
-p <- ggplot(data = td, aes(x = TC, 
-                           y = sqrt(tree_dns_gt50_JUOS + tree_dns_gt50_PIED), 
-                           color = scode))
-p <- p + geom_point()
-p <- p + theme_bw()
-p <- p + geom_line(aes(y = yhat_tree_dens))
-p <- p + labs(title = 'Tree Density for trees > 50 cm',
-                x = 'Pre-Treatment Tree Cover (%)',
-                y = 'Square Root of Tree Density (stems/ha)',
-                color = 'site')
-#p <- p + scale_x_continuous(breaks = seq(0,10, by = 2))
-p <- p + facet_wrap(scode~yst, ncol = 6, nrow = 3)
-plot(p)
-
-ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(scode~yst, nrow = 3)
 ```
 
-###Tree Cover (trees > 50cm)
-***Pre-treatment tree cover for all sites was collected in 2006
+\pagebreak
 
-***PLOT against TDI?
+#Tree Density for trees > 50 cm in height
+
+##Notes
+
+*Ask Scott--was tree density for trees > 50 cm measured at 1,2,3,6 yst?
+
+```{r, echo = FALSE}
+td$tree_dns_gt50 <- td$tree_dns_gt50_JUOS + td$tree_dns_gt50_PIED + td$tree_dns_gt50_PIMO
+```
+
+##Model
 ```{r}
-tcover <- filter(td, scode == 'ON' & year %in% c(6,16)|scode == 'GR' & year %in% c(6,17)|scode == 'SC' & year %in% c(6,17))
-tcover$tree_cover_ttl[tcover$subplot_id %in% c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & tcover$yst == 10] <- 0
-tcover$tree_cvr_PIED[tcover$subplot_id %in% c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & tcover$yst == 10] <- 0
-tcover$tree_cvr_JUOS[tcover$subplot_id %in% c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & tcover$yst == 10] <- 0
+m <- lmer(sqrt(tree_dns_gt50) ~ TDI + factor(yst) + factor(yst):TDI + (1|site), 
+          data = td)
+```
 
-tcover$yst <- factor(tcover$yst, levels = c(-1,0,10))
-levels(tcover$yst) <- c('pre', 'pre', '10')
 
-m <- lmer(sqrt(tree_cover_ttl) ~ TDI + yst + yst:TDI + (1|scode) + (1|subplot_id), data = tcover)
+```{r, echo = FALSE}
+#by yst
+td$yhat_tree_dns_gt50 <- predict(m, re.form = NA)
+p <- ggplot(data = td, 
+            aes(x = TDI, y = sqrt(tree_dns_gt50)))
+p <- p + geom_point()
+p <- p + theme_bw()
+p <- p + geom_line(aes(y = yhat_tree_dns_gt50))
+p <- p + labs(title = 'Tree Density for trees > 50 cm in height',
+                x = 'Pre-Treatment Tree Dominance Index (%)',
+                y = 'Square Root of Tree Density (stems/ha)')
+p <- p + facet_wrap(~yst, ncol = 3)
+plot(p)
+```
+
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
 summary(m)
 lincon(m)
+```
 
+\pagebreak
 
+##QQPlot and Plotted Residuals
+```{r, echo = FALSE}
+qqnorm(resid(m)); qqline(resid(m))
+ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst)
+```
+
+\pagebreak
+
+#Tree Cover 
+
+##Notes
+
+*Method: measured canopy area of trees > 50 cm in height and divided by area of subplot
+
+```{r, echo = FALSE}
+#Pre-treatment tree cover for all sites was collected in 2006
+tcover <- filter(td, site == 'ON' & year %in% c(6,16)|
+                   site == 'GR' & year %in% c(6,17)|
+                   site == 'SC' & year %in% c(6,17))
+tcover$tree_cover_ttl[tcover$subplot_id %in% 
+                        c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & 
+                        tcover$yst == 10] <- 0
+tcover$tree_cvr_PIED[tcover$subplot_id %in% 
+                       c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & 
+                       tcover$yst == 10] <- 0
+tcover$tree_cvr_JUOS[tcover$subplot_id %in% 
+                       c('JP-SC-GC002', 'JP-SC-GC004', 'JP-SC-GC007') & 
+                       tcover$yst == 10] <- 0
+
+#tcover$yst <- factor(tcover$yst, levels = c(-1,0,10))
+#levels(tcover$yst) <- c('pre', 'pre', '10')
+```
+
+##Model
+
+```{r}
+m <- lmer(sqrt(tree_cover_ttl) ~ TDI + factor(yst) + factor(yst):TDI + (1|site), 
+          data = tcover)
+```
+
+```{r, echo = FALSE}
 #by yst
 tcover$yhat_tree_cover <- predict(m, re.form = NA)
 p <- ggplot(data = tcover, aes(x = TDI, y = sqrt(tree_cover_ttl)))
@@ -693,18 +965,33 @@ p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_tree_cover))
 p <- p + theme_bw()
 p <- p + labs(title = 'Tree Cover',
-                x = 'Pre-Treatment Tree Cover (%)',
+                x = 'Pre-treatment Tree Dominance Index',
                 y = 'Square Root of Tree Cover (%)')
-#p <- p + scale_x_continuous(breaks = seq(0,60, by = 10))
+
 p <- p + facet_wrap(~yst, ncol = 2)
 plot(p)
+```
 
+\pagebreak
+
+##Inferences
+```{r, echo = FALSE}
+summary(m)
+lincon(m)
+```
+
+\pagebreak
+
+##QQPlot and Plotted Residuals
+```{r, echo = FALSE}
 qqnorm(resid(m)); qqline(resid(m))
-ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + facet_wrap(~yst) + scale_x_continuous(limits = c(0,1))
+ggplot(m, aes(x = .fitted, y = .resid)) + geom_point() + 
+  facet_wrap(~yst) 
+```
 
-#by yst and site
+```{r, eval = FALSE, include = FALSE}
 tcover$yhat_tree_cover <- predict(m)
-p <- ggplot(data = tcover, aes(x = TDI, y = sqrt(tree_cover_ttl), color = scode))
+p <- ggplot(data = tcover, aes(x = TDI, y = sqrt(tree_cover_ttl), color = site))
 p <- p + geom_jitter()
 p <- p + geom_line(aes(y = yhat_tree_cover))
 p <- p + theme_bw()
@@ -712,11 +999,6 @@ p <- p + labs(title = 'Tree Cover',
                 x = 'Pre-Treatment Tree Cover (%)',
                 y = 'Square Root of Tree Cover (%)')
 #p <- p + scale_x_continuous(breaks = seq(0,60, by = 10))
-p <- p + facet_wrap(scode~yst, ncol = 2, nrow = 3)
+p <- p + facet_wrap(site~yst, ncol = 2, nrow = 3)
 plot(p)
-
-ggplot(m, aes(x = .fitted, y = .resid)) + 
-  geom_point(aes(color = scode)) + 
-  facet_wrap(scode~yst, ncol = 2)
 ```
-
